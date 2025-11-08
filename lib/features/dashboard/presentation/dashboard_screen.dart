@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/ble/connection_cubit.dart' as connection;
 import '../../../core/ble/treadmill_service.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_session.dart';
 import '../../dashboard/cubit/dashboard_cubit.dart';
@@ -34,7 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF111218),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -58,7 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF00C389),
+        backgroundColor: AppColors.primary,
         onPressed: () {
           Navigator.of(context).pushNamed(PreWorkoutScreen.routeName);
         },
@@ -234,7 +235,7 @@ class _ProgramCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [color.withAlpha((0.9 * 255).round()), color],
+          colors: [AppColors.gradientOverlay(color), color],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -281,7 +282,7 @@ class _AddProgramCard extends StatelessWidget {
               Icon(
                 Icons.add_circle_outline,
                 size: 32,
-                color: Colors.white.withAlpha((0.7 * 255).round()),
+                color: AppColors.primary,
               ),
               const SizedBox(height: 8),
               Text(
@@ -400,7 +401,7 @@ class _HistoryList extends StatelessWidget {
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF1B1C24),
+            color: AppColors.secondary,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -410,7 +411,7 @@ class _HistoryList extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withAlpha((0.08 * 255).round()),
+                  color: Colors.white.withAlpha((0.1 * 255).round()),
                 ),
                 child: const Icon(Icons.local_fire_department, color: Colors.white70),
               ),
