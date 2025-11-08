@@ -176,6 +176,7 @@
 - [ ] Add icons for program types (Run, Intervals, Hill)
 - [ ] Add empty states (no history, no device)
 - [ ] Add error toasts/snackbars for BLE errors
+- [ ] Make dashboard greeting dynamic (time of day + user name)
 
 ## 16. Out of scope (later)
 - [ ] Strava export

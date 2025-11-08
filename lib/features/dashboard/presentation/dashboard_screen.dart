@@ -32,37 +32,64 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: const Color(0xFF111218),
       appBar: AppBar(
-        title: const Text('TreadRunner'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leadingWidth: 180,
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 16),
+          child: _ConnectionBadge(
+            style: _ConnectionBadgeStyle.compact,
+          ),
+        ),
+        titleSpacing: 0,
+        title: const SizedBox.shrink(),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
+            color: Colors.white70,
             onPressed: () {
               Navigator.of(context).pushNamed(SettingsScreen.routeName);
             },
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF00C389),
         onPressed: () {
           Navigator.of(context).pushNamed(PreWorkoutScreen.routeName);
         },
-        label: const Text('Pre Workout'),
-        icon: const Icon(Icons.directions_run),
+        child: const Icon(Icons.play_arrow_rounded, size: 32),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > 720;
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ConnectionStatusCard(isWide: isWide),
+                Text(
+                  'Good Morning',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 24),
+                Text(
+                  'Programs',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _ProgramsSection(isWide: isWide),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 const _HistorySection(),
               ],
             ),
@@ -73,127 +100,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _ConnectionStatusCard extends StatelessWidget {
-  const _ConnectionStatusCard({required this.isWide});
+enum _ConnectionBadgeStyle { compact, expanded }
 
-  final bool isWide;
+class _ConnectionBadge extends StatelessWidget {
+  const _ConnectionBadge({this.style = _ConnectionBadgeStyle.expanded});
+
+  final _ConnectionBadgeStyle style;
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<connection.ConnectionCubit, connection.ConnectionState>(
       builder: (context, state) {
         final statusText = _statusText(state.status);
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: isWide
-              ? Row(
-                  children: [
-                    Expanded(
-                      child: _ConnectionInfo(
-                        statusText: statusText,
-                        deviceId: state.connectedDeviceId,
-                        isScanning: state.isScanning,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    _ConnectionActions(state: state),
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ConnectionInfo(
-                      statusText: statusText,
-                      deviceId: state.connectedDeviceId,
-                      isScanning: state.isScanning,
-                    ),
-                    const SizedBox(height: 16),
-                    _ConnectionActions(state: state),
-                  ],
-                ),
+        final icon = state.status == TreadmillConnectionState.connected
+            ? Icons.link
+            : Icons.link_off;
+        final textStyle = style == _ConnectionBadgeStyle.compact
+            ? const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w500,
+              )
+            : Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                );
+        return Row(
+          mainAxisSize:
+              style == _ConnectionBadgeStyle.compact ? MainAxisSize.min : MainAxisSize.max,
+          children: [
+            Icon(
+              icon,
+              color: style == _ConnectionBadgeStyle.compact
+                  ? Colors.white70
+                  : Colors.white,
+              size: style == _ConnectionBadgeStyle.compact ? 18 : 24,
+            ),
+            const SizedBox(width: 8),
+            Text(statusText, style: textStyle),
+          ],
         );
       },
     );
   }
 
-  String _statusText(TreadmillConnectionState status) {
+  static String _statusText(TreadmillConnectionState status) {
     switch (status) {
-      case TreadmillConnectionState.scanning:
-        return 'Searching for treadmills...';
-      case TreadmillConnectionState.connecting:
-        return 'Connecting to treadmill...';
       case TreadmillConnectionState.connected:
         return 'Connected';
+      case TreadmillConnectionState.connecting:
+        return 'Connecting...';
+      case TreadmillConnectionState.scanning:
+        return 'Scanning...';
       case TreadmillConnectionState.error:
         return 'Connection error';
       case TreadmillConnectionState.disconnected:
-        return 'No treadmill connected';
+        return 'Not Connected';
     }
-  }
-}
-
-class _ConnectionInfo extends StatelessWidget {
-  const _ConnectionInfo({
-    required this.statusText,
-    required this.deviceId,
-    required this.isScanning,
-  });
-
-  final String statusText;
-  final String? deviceId;
-  final bool isScanning;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          statusText,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        if (deviceId != null && !isScanning) ...[
-          const SizedBox(height: 4),
-          Text(
-            'Device: $deviceId',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _ConnectionActions extends StatelessWidget {
-  const _ConnectionActions({required this.state});
-
-  final connection.ConnectionState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<connection.ConnectionCubit>();
-    return Wrap(
-      spacing: 12,
-      runSpacing: 8,
-      children: [
-        ElevatedButton.icon(
-          onPressed: state.isScanning ? null : cubit.startScan,
-          icon: const Icon(Icons.search),
-          label: Text(state.isScanning ? 'Scanning...' : 'Scan devices'),
-        ),
-        if (state.status == TreadmillConnectionState.connected)
-          OutlinedButton.icon(
-            onPressed: cubit.disconnect,
-            icon: const Icon(Icons.link_off),
-            label: const Text('Disconnect'),
-          ),
-      ],
-    );
   }
 }
 
@@ -210,23 +171,6 @@ class _ProgramsSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Programs',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to create program flow.
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('New'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             if (state.status == ProgramsStatus.loading)
               const Center(child: CircularProgressIndicator())
             else if (programs.isEmpty)
@@ -260,15 +204,16 @@ class _ProgramsGrid extends StatelessWidget {
     ];
     final gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: 2,
-      mainAxisExtent: 160,
+      mainAxisExtent: isWide ? 220 : 200,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
     );
 
     return SizedBox(
-      height: isWide ? 320 : 340,
+      height: isWide ? 360 : 420,
       child: GridView.builder(
         scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         gridDelegate: gridDelegate,
         itemCount: cards.length,
         itemBuilder: (context, index) => cards[index],
@@ -289,7 +234,7 @@ class _ProgramCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [color.withAlpha((0.8 * 255).round()), color],
+          colors: [color.withAlpha((0.9 * 255).round()), color],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -324,22 +269,30 @@ class _AddProgramCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _DottedBorderCard(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add_circle_outline,
-              size: 32,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add Program',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
+    return GestureDetector(
+      onTap: () {
+        // TODO: Navigate to create program screen.
+      },
+      child: _DottedBorderCard(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_circle_outline,
+                size: 32,
+                color: Colors.white.withAlpha((0.7 * 255).round()),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add Program',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.white70),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -411,8 +364,11 @@ class _HistorySection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Recent Sessions',
-              style: Theme.of(context).textTheme.titleLarge,
+              'History',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 12),
             if (state.status == DashboardStatus.loading)
@@ -436,28 +392,69 @@ class _HistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      children: sessions
-          .map(
-            (session) => Card(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ListTile(
-                title: Text('Program #${session.planId ?? '-'}'),
-                subtitle: Text(
-                  '${session.startedAt.toLocal()}',
+      children: sessions.map((session) {
+        final duration = _formatDuration(
+          (session.endedAt ?? DateTime.now()).difference(session.startedAt),
+        );
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1C24),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withAlpha((0.08 * 255).round()),
                 ),
-                trailing: Text(
-                  _formatDuration(
-                    (session.endedAt ?? DateTime.now())
-                        .difference(session.startedAt),
+                child: const Icon(Icons.local_fire_department, color: Colors.white70),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Program #${session.planId ?? '-'}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatDate(session.startedAt),
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    duration,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatDistance(session),
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ],
               ),
-            ),
-          )
-          .toList(),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -465,6 +462,27 @@ class _HistoryList extends StatelessWidget {
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date).inDays;
+    if (difference == 0) {
+      final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+      final period = date.hour >= 12 ? 'PM' : 'AM';
+      final minutes = date.minute.toString().padLeft(2, '0');
+      return 'Today, $hour:$minutes $period';
+    } else if (difference == 1) {
+      return 'Yesterday';
+    }
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDistance(WorkoutSession session) {
+    final distanceMeters =
+        session.metrics.isNotEmpty ? session.metrics.last.distanceMeters ?? 0 : 0;
+    final miles = (distanceMeters / 1609.34);
+    return '${miles.toStringAsFixed(1)} mi';
   }
 }
 
@@ -478,19 +496,23 @@ class _EmptyHistoryCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: Theme.of(context).colorScheme.surface,
+        color: const Color(0xFF242426),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'No trainings recorded',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
             'Start a workout to see your progress here.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white70,
+                ),
           ),
         ],
       ),
