@@ -6,6 +6,7 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 import 'core/analytics/analytics_consent_cubit.dart';
 import 'core/analytics/analytics_service.dart';
+import 'core/ble/connection_cubit.dart';
 import 'core/ble/ftms_treadmill_service.dart';
 import 'core/ble/mock_treadmill_service.dart';
 import 'core/ble/treadmill_service.dart';
@@ -16,7 +17,11 @@ import 'data/device/device_repository.dart';
 import 'data/programs/programs_repository.dart';
 import 'data/workout_history/workout_history_repository.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/pre_workout/bloc/pre_workout_cubit.dart';
+import 'features/programs/bloc/programs_bloc.dart';
 import 'features/settings/presentation/settings_screen.dart';
+import 'features/workout/bloc/workout_bloc.dart';
+import 'features/workout_summary/cubit/workout_summary_cubit.dart';
 
 const bool _useMockTreadmillService =
     bool.fromEnvironment('USE_MOCK_TREADMILL', defaultValue: true);
@@ -67,8 +72,36 @@ Future<void> main() async {
           value: treadmillService,
         ),
       ],
-      child: BlocProvider<AnalyticsConsentCubit>.value(
-        value: analyticsConsentCubit,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AnalyticsConsentCubit>.value(
+            value: analyticsConsentCubit,
+          ),
+          BlocProvider<ConnectionCubit>(
+            create: (context) =>
+                ConnectionCubit(context.read<TreadmillService>()),
+          ),
+          BlocProvider<ProgramsBloc>(
+            create: (context) => ProgramsBloc(
+              context.read<ProgramsRepository>(),
+            )..add(const ProgramsSubscriptionRequested()),
+          ),
+          BlocProvider<PreWorkoutCubit>(
+            create: (context) => PreWorkoutCubit(
+              programsRepository: context.read<ProgramsRepository>(),
+            )..loadInitialPlan(),
+          ),
+          BlocProvider<WorkoutBloc>(
+            create: (context) => WorkoutBloc(
+              workoutHistoryRepository:
+                  context.read<WorkoutHistoryRepository>(),
+              treadmillService: context.read<TreadmillService>(),
+            ),
+          ),
+          BlocProvider<WorkoutSummaryCubit>(
+            create: (_) => WorkoutSummaryCubit(),
+          ),
+        ],
         child: const TreadRunnerApp(),
       ),
     ),
