@@ -54,16 +54,16 @@
   - [x] `DeviceRepository`
 
 ## 3. BLE layer
-- [ ] Implement `TreadmillService` abstract class:
-  - [ ] scan()
-  - [ ] connect(deviceId)
-  - [ ] disconnect()
-  - [ ] listenToMetrics() → speed, incline, distance, time, hr
-  - [ ] setSpeed(value)
-  - [ ] setIncline(value)
-- [ ] Implement FTMS-based service (`FtmsTreadmillService`)
-- [ ] Implement a mock treadmill service for simulator/testing
-- [ ] Add feature detection: mark unsupported controls so UI can disable buttons
+- [x] Implement `TreadmillService` abstract class:
+  - [x] scan()
+  - [x] connect(deviceId)
+  - [x] disconnect()
+  - [x] listenToMetrics() → speed, incline, distance, time, hr
+  - [x] setSpeed(value)
+  - [x] setIncline(value)
+- [x] Implement FTMS-based service (`FtmsTreadmillService`)
+- [x] Implement a mock treadmill service for simulator/testing
+- [x] Add feature detection: mark unsupported controls so UI can disable buttons
 
 ## 4. Health integration (platform channels)
 - [ ] Define `HealthService` interface in Dart:
@@ -169,7 +169,6 @@
 - [ ] Test analytics on Android
 - [ ] Test analytics on iOS
 - [ ] Verify events show up in GA dashboard
-
 
 ## 15. Polish
 - [ ] Add light/dark theme
