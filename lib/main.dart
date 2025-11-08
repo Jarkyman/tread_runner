@@ -10,6 +10,7 @@ import 'core/ble/ftms_treadmill_service.dart';
 import 'core/ble/mock_treadmill_service.dart';
 import 'core/ble/treadmill_service.dart';
 import 'core/database/app_database.dart';
+import 'core/health/health_service.dart';
 import 'core/preferences/user_preferences_repository.dart';
 import 'data/device/device_repository.dart';
 import 'data/programs/programs_repository.dart';
@@ -32,6 +33,7 @@ Future<void> main() async {
   await programsRepository.seedDefaultsIfNeeded();
   final workoutHistoryRepository = WorkoutHistoryRepository(database.isar);
   final deviceRepository = DeviceRepository(database.isar);
+  final healthService = await HealthServiceFactory.create();
   final treadmillService = _useMockTreadmillService
       ? MockTreadmillService()
       : FtmsTreadmillService(FlutterReactiveBle());
@@ -57,6 +59,9 @@ Future<void> main() async {
         ),
         RepositoryProvider<DeviceRepository>.value(
           value: deviceRepository,
+        ),
+        RepositoryProvider<HealthService>.value(
+          value: healthService,
         ),
         RepositoryProvider<TreadmillService>.value(
           value: treadmillService,

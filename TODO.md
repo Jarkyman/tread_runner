@@ -66,13 +66,13 @@
 - [x] Add feature detection: mark unsupported controls so UI can disable buttons
 
 ## 4. Health integration (platform channels)
-- [ ] Define `HealthService` interface in Dart:
-  - [ ] requestAuthorization()
-  - [ ] writeWorkout(session)
-  - [ ] readLatestHeartRate()
-- [ ] Create iOS method channel skeleton for HealthKit
-- [ ] Create Android method channel skeleton for Google Fit
-- [ ] Make calls non-blocking and optional (app must work without permissions)
+- [x] Define `HealthService` interface in Dart:
+  - [x] requestAuthorization()
+  - [x] writeWorkout(session)
+  - [x] readLatestHeartRate()
+- [x] Create iOS method channel skeleton for HealthKit
+- [x] Create Android method channel skeleton for Google Fit
+- [x] Make calls non-blocking and optional (app must work without permissions)
 
 ## 5. App state (Bloc)
 - [ ] Create global `AppBloc` or `ConnectionCubit` for treadmill connection state
