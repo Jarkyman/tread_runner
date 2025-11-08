@@ -77,7 +77,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     Emitter<WorkoutState> emit,
   ) async {
     if (state.status != WorkoutStatus.running) return;
-    await _tickerSubscription?.pause();
+    _tickerSubscription?.pause();
     emit(state.copyWith(status: WorkoutStatus.paused));
   }
 
@@ -86,7 +86,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     Emitter<WorkoutState> emit,
   ) async {
     if (state.status != WorkoutStatus.paused) return;
-    await _tickerSubscription?.resume();
+    _tickerSubscription?.resume();
     emit(state.copyWith(status: WorkoutStatus.running));
   }
 
@@ -116,7 +116,11 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     Emitter<WorkoutState> emit,
   ) {
     if (state.status != WorkoutStatus.running) return;
-    emit(state.copyWith(elapsed: state.elapsed + event.delta));
+    emit(
+      state.copyWith(
+        elapsed: state.elapsed + const Duration(seconds: 1),
+      ),
+    );
   }
 
   void _onMetricsUpdated(

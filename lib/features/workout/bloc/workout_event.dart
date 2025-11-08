@@ -38,12 +38,7 @@ class WorkoutStopped extends WorkoutEvent {
 }
 
 class _WorkoutTicked extends WorkoutEvent {
-  const _WorkoutTicked({this.delta = const Duration(seconds: 1)});
-
-  final Duration delta;
-
-  @override
-  List<Object?> get props => [delta];
+  const _WorkoutTicked();
 }
 
 class _WorkoutMetricsUpdated extends WorkoutEvent {

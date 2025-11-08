@@ -47,7 +47,7 @@ class ProgramsRepository {
       WorkoutPlan(
         name: '20 Minute Tempo',
         colorValue: 0xFFE65100,
-        steps: [
+        initialSteps: [
           WorkoutStep(
             type: WorkoutStepType.warmup,
             durationSeconds: 5 * 60,
@@ -71,7 +71,7 @@ class ProgramsRepository {
       WorkoutPlan(
         name: 'Interval Booster',
         colorValue: 0xFF1E88E5,
-        steps: [
+        initialSteps: [
           WorkoutStep(
             type: WorkoutStepType.warmup,
             durationSeconds: 5 * 60,
@@ -99,7 +99,7 @@ class ProgramsRepository {
       WorkoutPlan(
         name: 'Hill Climber',
         colorValue: 0xFF43A047,
-        steps: [
+        initialSteps: [
           WorkoutStep(
             type: WorkoutStepType.warmup,
             durationSeconds: 5 * 60,

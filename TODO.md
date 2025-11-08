@@ -87,13 +87,13 @@
 - [ ] Wire blocs in `main.dart` with `MultiBlocProvider`
 
 ## 6. UI – Dashboard
-- [ ] Screen with:
-  - [ ] connection status (top)
-  - [ ] programs grid (2x2, horizontal scroll, add-program skeleton)
-  - [ ] history list (or “No trainings recorded”)
-  - [ ] FAB → Pre Workout
-- [ ] Load programs from `ProgramsRepository`
-- [ ] Load history from `WorkoutHistoryRepository`
+- [x] Screen with:
+  - [x] connection status (top)
+  - [x] programs grid (2x2, horizontal scroll, add-program skeleton)
+  - [x] history list (or “No trainings recorded”)
+  - [x] FAB → Pre Workout
+- [x] Load programs from `ProgramsRepository`
+- [x] Load history from `WorkoutHistoryRepository`
 
 ## 7. UI – Pre Workout
 - [ ] Screen with:

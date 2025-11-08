@@ -16,8 +16,10 @@ import 'core/preferences/user_preferences_repository.dart';
 import 'data/device/device_repository.dart';
 import 'data/programs/programs_repository.dart';
 import 'data/workout_history/workout_history_repository.dart';
+import 'features/dashboard/cubit/dashboard_cubit.dart';
 import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/pre_workout/bloc/pre_workout_cubit.dart';
+import 'features/pre_workout/presentation/pre_workout_screen.dart';
 import 'features/programs/bloc/programs_bloc.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/workout/bloc/workout_bloc.dart';
@@ -91,6 +93,11 @@ Future<void> main() async {
               programsRepository: context.read<ProgramsRepository>(),
             )..loadInitialPlan(),
           ),
+          BlocProvider<DashboardCubit>(
+            create: (context) => DashboardCubit(
+              context.read<WorkoutHistoryRepository>(),
+            ),
+          ),
           BlocProvider<WorkoutBloc>(
             create: (context) => WorkoutBloc(
               workoutHistoryRepository:
@@ -133,6 +140,7 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
       routes: {
         DashboardScreen.routeName: (_) => const DashboardScreen(),
         SettingsScreen.routeName: (_) => const SettingsScreen(),
+        PreWorkoutScreen.routeName: (_) => const PreWorkoutScreen(),
       },
       home: const DashboardScreen(),
     );
