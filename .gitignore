@@ -1,0 +1,92 @@
+# -----------------------------
+# OS / Misc
+# -----------------------------
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# -----------------------------
+# AI / local tooling
+# -----------------------------
+/ai/
+
+# -----------------------------
+# IDEs
+# -----------------------------
+# Android Studio / IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# -----------------------------
+# Flutter / Dart / Pub
+# -----------------------------
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Generated plugin registrant (sometimes created)
+/flutter_export_environment.sh
+
+# -----------------------------
+# Android
+# -----------------------------
+/android/.gradle/
+/android/local.properties
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/app/generated
+/android/app/intermediates
+/android/app/.cxx
+
+# Gradle
+.gradle/
+build/
+
+# -----------------------------
+# iOS
+# -----------------------------
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/App.framework
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/ephemeral/
+/ios/Runner/GeneratedPluginRegistrant.*
+
+# Xcode
+*.xcuserstate
+**/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+
+# -----------------------------
+# Symbolication / obfuscation
+# -----------------------------
+app.*.symbols
+app.*.map.json
+
+# -----------------------------
+# Firebase / Local config
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
