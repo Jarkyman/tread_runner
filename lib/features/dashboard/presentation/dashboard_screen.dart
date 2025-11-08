@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/analytics/analytics_service.dart';
-import '../../../core/ble/connection_cubit.dart' as connection;
-import '../../../core/ble/treadmill_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_session.dart';
@@ -11,6 +9,7 @@ import '../../dashboard/cubit/dashboard_cubit.dart';
 import '../../pre_workout/presentation/pre_workout_screen.dart';
 import '../../programs/bloc/programs_bloc.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../../shared/widgets/connection_status_badge.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -42,9 +41,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         leadingWidth: 180,
         leading: const Padding(
           padding: EdgeInsets.only(left: 16),
-          child: _ConnectionBadge(
-            style: _ConnectionBadgeStyle.compact,
-          ),
+          child: ConnectionStatusBadge(style: ConnectionBadgeStyle.compact),
         ),
         titleSpacing: 0,
         title: const SizedBox.shrink(),
@@ -101,64 +98,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-enum _ConnectionBadgeStyle { compact, expanded }
-
-class _ConnectionBadge extends StatelessWidget {
-  const _ConnectionBadge({this.style = _ConnectionBadgeStyle.expanded});
-
-  final _ConnectionBadgeStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<connection.ConnectionCubit, connection.ConnectionState>(
-      builder: (context, state) {
-        final statusText = _statusText(state.status);
-        final icon = state.status == TreadmillConnectionState.connected
-            ? Icons.link
-            : Icons.link_off;
-        final textStyle = style == _ConnectionBadgeStyle.compact
-            ? const TextStyle(
-                color: Colors.white70,
-                fontWeight: FontWeight.w500,
-              )
-            : Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                );
-        return Row(
-          mainAxisSize:
-              style == _ConnectionBadgeStyle.compact ? MainAxisSize.min : MainAxisSize.max,
-          children: [
-            Icon(
-              icon,
-              color: style == _ConnectionBadgeStyle.compact
-                  ? Colors.white70
-                  : Colors.white,
-              size: style == _ConnectionBadgeStyle.compact ? 18 : 24,
-            ),
-            const SizedBox(width: 8),
-            Text(statusText, style: textStyle),
-          ],
-        );
-      },
-    );
-  }
-
-  static String _statusText(TreadmillConnectionState status) {
-    switch (status) {
-      case TreadmillConnectionState.connected:
-        return 'Connected';
-      case TreadmillConnectionState.connecting:
-        return 'Connecting...';
-      case TreadmillConnectionState.scanning:
-        return 'Scanning...';
-      case TreadmillConnectionState.error:
-        return 'Connection error';
-      case TreadmillConnectionState.disconnected:
-        return 'Not Connected';
-    }
-  }
-}
-
 class _ProgramsSection extends StatelessWidget {
   const _ProgramsSection({required this.isWide});
 
@@ -177,10 +116,7 @@ class _ProgramsSection extends StatelessWidget {
             else if (programs.isEmpty)
               const _EmptyProgramsCard()
             else
-              _ProgramsGrid(
-                programs: programs,
-                isWide: isWide,
-              ),
+              _ProgramsGrid(programs: programs, isWide: isWide),
           ],
         );
       },
@@ -189,10 +125,7 @@ class _ProgramsSection extends StatelessWidget {
 }
 
 class _ProgramsGrid extends StatelessWidget {
-  const _ProgramsGrid({
-    required this.programs,
-    required this.isWide,
-  });
+  const _ProgramsGrid({required this.programs, required this.isWide});
 
   final List<WorkoutPlan> programs;
   final bool isWide;
@@ -246,18 +179,16 @@ class _ProgramCard extends StatelessWidget {
         children: [
           Text(
             plan.name,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(color: Colors.white),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.white),
           ),
           const Spacer(),
           Text(
             '${plan.steps.length} steps',
-            style: Theme.of(context)
-                .textTheme
-                .bodyMedium
-                ?.copyWith(color: Colors.white70),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
           ),
         ],
       ),
@@ -287,10 +218,9 @@ class _AddProgramCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Add Program',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Colors.white70),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
               ),
             ],
           ),
@@ -311,10 +241,9 @@ class _DottedBorderCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Theme.of(context)
-              .colorScheme
-              .primary
-              .withAlpha((0.4 * 255).round()),
+          color: Theme.of(
+            context,
+          ).colorScheme.primary.withAlpha((0.4 * 255).round()),
           style: BorderStyle.solid,
           width: 1.5,
         ),
@@ -367,9 +296,9 @@ class _HistorySection extends StatelessWidget {
             Text(
               'History',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 12),
             if (state.status == DashboardStatus.loading)
@@ -413,7 +342,10 @@ class _HistoryList extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: Colors.white.withAlpha((0.1 * 255).round()),
                 ),
-                child: const Icon(Icons.local_fire_department, color: Colors.white70),
+                child: const Icon(
+                  Icons.local_fire_department,
+                  color: Colors.white70,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -480,8 +412,9 @@ class _HistoryList extends StatelessWidget {
   }
 
   String _formatDistance(WorkoutSession session) {
-    final distanceMeters =
-        session.metrics.isNotEmpty ? session.metrics.last.distanceMeters ?? 0 : 0;
+    final distanceMeters = session.metrics.isNotEmpty
+        ? session.metrics.last.distanceMeters ?? 0
+        : 0;
     final miles = (distanceMeters / 1609.34);
     return '${miles.toStringAsFixed(1)} mi';
   }
@@ -504,16 +437,16 @@ class _EmptyHistoryCard extends StatelessWidget {
         children: [
           Text(
             'No trainings recorded',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 8),
           Text(
             'Start a workout to see your progress here.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
           ),
         ],
       ),

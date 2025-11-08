@@ -79,15 +79,29 @@ class PreWorkoutCubit extends Cubit<PreWorkoutState> {
         super(PreWorkoutState.initial());
 
   final ProgramsRepository _programsRepository;
+  static const int _runPlanId = -100;
+  static final WorkoutPlan _runPlan = WorkoutPlan(
+    id: _runPlanId,
+    name: 'Run',
+    colorValue: 0xFF34D399,
+    initialSteps: const [],
+  );
+
+  static int get runPlanId => _runPlanId;
 
   Future<void> loadInitialPlan() async {
     emit(state.copyWith(isLoading: true, clearError: true));
     try {
       final plans = await _programsRepository.getPrograms();
+      final mergedPlans = <WorkoutPlan>[
+        _runPlan,
+        ...plans.where((plan) => plan.id != _runPlanId),
+      ];
+      final defaultPlan = state.selectedPlan ?? _runPlan;
       emit(
         state.copyWith(
-          availablePlans: plans,
-          selectedPlan: state.selectedPlan ?? (plans.isNotEmpty ? plans.first : null),
+          availablePlans: mergedPlans,
+          selectedPlan: defaultPlan,
           isLoading: false,
         ),
       );

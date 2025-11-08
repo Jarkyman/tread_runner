@@ -96,16 +96,16 @@
 - [x] Load history from `WorkoutHistoryRepository`
 
 ## 7. UI – Pre Workout
-- [ ] Screen with:
-  - [ ] connection status in top bar
-  - [ ] selected program card + dropdown
-  - [ ] speed control (+/-)
-  - [ ] incline control (+/-)
-  - [ ] goal selector (Duration / Distance)
-  - [ ] time/distance picker
-  - [ ] bottom buttons: Cancel (25%), primary (75%)
-- [ ] If not connected → primary says “Connect treadmill” and opens device list
-- [ ] If connected → primary says “Begin Workout” and starts `WorkoutBloc`
+- [x] Screen with:
+  - [x] connection status in top bar
+  - [x] selected program card + dropdown
+  - [x] speed control (+/-)
+  - [x] incline control (+/-)
+  - [x] goal selector (Duration / Distance)
+  - [x] time/distance picker
+  - [x] bottom buttons: Cancel (25%), primary (75%)
+- [x] If not connected → primary says “Connect treadmill” and opens device list
+- [x] If connected → primary says “Begin Workout” and starts `WorkoutBloc`
 
 ## 8. UI – Workout (live)
 - [ ] Screen with:
@@ -148,6 +148,12 @@
   - [ ] App version footer
 - [ ] Hook device list to BLE scan
 
+## 11.5. App Icon
+- [x] create Appicon to IOS
+- [x] create Appicon to Android
+- [ ] Add Appicon to IOS
+- [ ] Add Appicon to Android
+
 ## 12. Permissions flow
 - [ ] On first BLE scan → request BT + (Android) location
 - [ ] On first health sync → request HealthKit/Google Fit
@@ -177,6 +183,7 @@
 - [ ] Add empty states (no history, no device)
 - [ ] Add error toasts/snackbars for BLE errors
 - [ ] Make dashboard greeting dynamic (time of day + user name)
+- [ ] Allow editing presets for non-run programs on Pre Workout screen
 
 ## 16. Out of scope (later)
 - [ ] Strava export
