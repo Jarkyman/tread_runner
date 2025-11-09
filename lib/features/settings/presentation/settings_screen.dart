@@ -8,6 +8,7 @@ import '../../../core/analytics/analytics_consent_cubit.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/ble/connection_cubit.dart' as connection;
 import '../../../core/ble/treadmill_service.dart';
+import '../../../core/permissions/ble_permission_handler.dart';
 import '../../../core/preferences/units_preference.dart';
 import '../../../core/preferences/user_preferences_repository.dart';
 import '../../../core/theme/app_colors.dart';
@@ -75,48 +76,91 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        children: [
-          _SectionCard(
-            title: 'Device Connections',
-            icon: Icons.bluetooth,
-            actionLabel: 'Add New',
-            onActionTap: () =>
-                context.read<connection.ConnectionCubit>().startScan(),
-            child: const _DevicesCard(),
-          ),
-          const SizedBox(height: 24),
-          _SectionCard(
-            title: 'App Preferences',
-            icon: Icons.tune,
-            child: _PreferencesCard(
-              pushNotifications: _pushNotifications,
-              audioCues: _audioCues,
-              unitsPreference: _unitsPreference,
-              isUnitsLoading: _isUnitsLoading,
-              onNotificationsChanged: (value) =>
-                  setState(() => _pushNotifications = value),
-              onAudioCuesTapped: () =>
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Workout audio cues are coming soon.'),
-                    ),
+      body:
+          BlocListener<connection.ConnectionCubit, connection.ConnectionState>(
+            listenWhen: (previous, current) =>
+                previous.errorMessage != current.errorMessage,
+            listener: (context, state) {
+              final message = state.errorMessage;
+              if (message != null && message.isNotEmpty) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(message)));
+              }
+            },
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              children: [
+                _SectionCard(
+                  title: 'Device Connections',
+                  icon: Icons.bluetooth,
+                  actionLabel: 'Search',
+                  onActionTap: () => unawaited(_handleScanRequest(context)),
+                  child: const _DevicesCard(),
+                ),
+                const SizedBox(height: 24),
+                _SectionCard(
+                  title: 'App Preferences',
+                  icon: Icons.tune,
+                  child: _PreferencesCard(
+                    pushNotifications: _pushNotifications,
+                    audioCues: _audioCues,
+                    unitsPreference: _unitsPreference,
+                    isUnitsLoading: _isUnitsLoading,
+                    onNotificationsChanged: (value) =>
+                        setState(() => _pushNotifications = value),
+                    onAudioCuesTapped: () =>
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Workout audio cues are coming soon.',
+                            ),
+                          ),
+                        ),
+                    onUnitsChanged: _handleUnitsChanged,
                   ),
-              onUnitsChanged: _handleUnitsChanged,
+                ),
+                const SizedBox(height: 24),
+                _SectionCard(
+                  title: 'Support',
+                  icon: Icons.headset_mic_outlined,
+                  child: _SupportCard(),
+                ),
+                const SizedBox(height: 32),
+                _AppVersionFooter(),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          _SectionCard(
-            title: 'Support',
-            icon: Icons.headset_mic_outlined,
-            child: _SupportCard(),
-          ),
-          const SizedBox(height: 32),
-          _AppVersionFooter(),
-        ],
-      ),
     );
+  }
+
+  Future<void> _handleScanRequest(BuildContext context) async {
+    final cubit = context.read<connection.ConnectionCubit>();
+    final started = await cubit.startScan();
+    final messenger = ScaffoldMessenger.of(context);
+    if (started) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Scanning for treadmills...')),
+      );
+    } else {
+      final latestState = cubit.state;
+      final fallbackMessage =
+          latestState.errorMessage ??
+          _permissionFallbackText(latestState.permissionStatus);
+      messenger.showSnackBar(SnackBar(content: Text(fallbackMessage)));
+    }
+  }
+
+  String _permissionFallbackText(BlePermissionStatus status) {
+    switch (status) {
+      case BlePermissionStatus.denied:
+        return 'Bluetooth permission is required to scan for treadmills.';
+      case BlePermissionStatus.permanentlyDenied:
+        return 'Bluetooth access is disabled. Enable it in system settings.';
+      case BlePermissionStatus.granted:
+      case BlePermissionStatus.unknown:
+        return 'Unable to start scan. Please try again.';
+    }
   }
 }
 
@@ -204,79 +248,75 @@ class _DevicesCard extends StatelessWidget {
             }
           }
         }
-        currentDevice ??= devices.isNotEmpty ? devices.first : null;
+
+        final availableDevices = state.devices;
+        final status = state.status;
+        final isConnected =
+            status == TreadmillConnectionState.connected &&
+            currentDevice != null;
+        final connectingId = status == TreadmillConnectionState.connecting
+            ? state.connectedDeviceId
+            : null;
 
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(16),
+            _ConnectedDeviceTile(
+              device: currentDevice,
+              isConnected: isConnected,
               onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Device details coming soon.')),
-                );
+                if (currentDevice == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tap Search to find a treadmill nearby.'),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Device details coming soon.'),
+                    ),
+                  );
+                }
               },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        color: Colors.black.withAlpha(40),
-                      ),
-                      child: const Icon(
-                        Icons.directions_run,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            currentDevice?.name ?? 'No treadmill connected',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: currentDevice != null
-                                      ? AppColors.primary
-                                      : Colors.white38,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                currentDevice != null
-                                    ? 'Connected'
-                                    : 'Tap Add New to pair',
-                                style: const TextStyle(color: Colors.white54),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right, color: Colors.white54),
-                  ],
-                ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Available devices',
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
               ),
             ),
+            const SizedBox(height: 12),
+            if (availableDevices.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withOpacity(0.05),
+                ),
+                child: const Text(
+                  'Tap Search to look for treadmills nearby.',
+                  style: TextStyle(color: Colors.white54),
+                ),
+              )
+            else
+              Column(
+                children: availableDevices
+                    .map(
+                      (device) => _AvailableDeviceTile(
+                        device: device,
+                        isConnecting: connectingId == device.id,
+                        isConnected:
+                            isConnected && currentDevice?.id == device.id,
+                      ),
+                    )
+                    .toList(),
+              ),
+            if (_shouldShowPermissionNotice(state.permissionStatus))
+              _PermissionNotice(status: state.permissionStatus),
             if (state.isScanning)
               const Padding(
                 padding: EdgeInsets.only(top: 12),
@@ -285,6 +325,280 @@ class _DevicesCard extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  bool _shouldShowPermissionNotice(BlePermissionStatus status) {
+    return status == BlePermissionStatus.denied ||
+        status == BlePermissionStatus.permanentlyDenied;
+  }
+}
+
+class _ConnectedDeviceTile extends StatelessWidget {
+  const _ConnectedDeviceTile({
+    required this.device,
+    required this.isConnected,
+    required this.onTap,
+  });
+
+  final TreadmillDeviceInfo? device;
+  final bool isConnected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(12),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                color: Colors.black.withAlpha(40),
+              ),
+              child: const Icon(Icons.directions_run, color: Colors.white),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    device?.name ?? 'No treadmill connected',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isConnected
+                              ? AppColors.primary
+                              : Colors.white38,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isConnected ? 'Connected' : 'Not connected',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white54),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AvailableDeviceTile extends StatelessWidget {
+  const _AvailableDeviceTile({
+    required this.device,
+    required this.isConnecting,
+    required this.isConnected,
+  });
+
+  final TreadmillDeviceInfo device;
+  final bool isConnecting;
+  final bool isConnected;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = _subtitleText(device);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: Colors.black.withOpacity(0.25),
+        border: Border.all(
+          color: isConnected ? AppColors.primary : Colors.white12,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  device.name.isEmpty ? 'FTMS Device' : device.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _SignalStrengthIndicator(rssi: device.rssi),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (isConnected)
+            const Icon(Icons.check_circle, color: AppColors.primary)
+          else
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: isConnecting
+                  ? null
+                  : () => context
+                        .read<connection.ConnectionCubit>()
+                        .connectToDevice(device.id),
+              child: isConnecting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Connect',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _subtitleText(TreadmillDeviceInfo device) {
+    final vendor = device.vendor;
+    if (vendor == null || vendor.isEmpty) {
+      return '';
+    }
+    return vendor;
+  }
+}
+
+class _SignalStrengthIndicator extends StatelessWidget {
+  const _SignalStrengthIndicator({required this.rssi});
+
+  final int rssi;
+
+  @override
+  Widget build(BuildContext context) {
+    final strength = _signalLevel(rssi);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (index) {
+        final color = index < strength
+            ? (index == 2
+                  ? AppColors.primary
+                  : index == 1
+                  ? const Color(0xFFF0F043)
+                  : const Color(0xFFF04E43))
+            : Colors.white24;
+        return Container(
+          width: 6,
+          height: 12 + (index * 6),
+          margin: const EdgeInsets.only(right: 2),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        );
+      }),
+    );
+  }
+
+  int _signalLevel(int rssi) {
+    if (rssi >= -50) return 3;
+    if (rssi >= -65) return 2;
+    return 1;
+  }
+}
+
+class _PermissionNotice extends StatelessWidget {
+  const _PermissionNotice({required this.status});
+
+  final BlePermissionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPermanent = status == BlePermissionStatus.permanentlyDenied;
+    final message = isPermanent
+        ? 'Bluetooth access is disabled for TreadRunner. Open system settings to re-enable it.'
+        : 'Bluetooth permission is required to discover your treadmill.';
+    final actionLabel = isPermanent ? 'Open Settings' : 'Try Again';
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Bluetooth permission needed',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(color: Colors.white70, height: 1.3),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: () {
+              if (isPermanent) {
+                unawaited(
+                  context
+                      .read<connection.ConnectionCubit>()
+                      .openSystemSettings(),
+                );
+              } else {
+                unawaited(
+                  context.read<connection.ConnectionCubit>().startScan(),
+                );
+              }
+            },
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -155,7 +155,7 @@
 - [x] Add Appicon to Android
 
 ## 12. Permissions flow
-- [ ] On first BLE scan → request BT + (Android) location
+- [x] On first BLE scan → request BT + (Android) location
 - [ ] On first health sync → request HealthKit/Google Fit
 - [ ] Show graceful fallback UIs when denied
 

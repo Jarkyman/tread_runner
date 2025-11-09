@@ -9,11 +9,21 @@ import 'treadmill_service.dart';
 class FtmsTreadmillService implements TreadmillService {
   FtmsTreadmillService(this._ble);
 
-  static final Uuid _ftmsServiceUuid = Uuid.parse('00001826-0000-1000-8000-00805f9b34fb');
-  static final Uuid _treadmillDataCharacteristic =
-      Uuid.parse('00002AD2-0000-1000-8000-00805f9b34fb');
-  static final Uuid _controlPointCharacteristic =
-      Uuid.parse('00002AD9-0000-1000-8000-00805f9b34fb');
+  static final Uuid _ftmsServiceUuid = Uuid.parse(
+    '00001826-0000-1000-8000-00805f9b34fb',
+  );
+  static final Uuid _treadmillDataCharacteristic = Uuid.parse(
+    '00002ACD-0000-1000-8000-00805f9b34fb',
+  );
+  static final Uuid _indoorBikeDataCharacteristic = Uuid.parse(
+    '00002AD2-0000-1000-8000-00805f9b34fb',
+  );
+  static final Uuid _controlPointCharacteristic = Uuid.parse(
+    '00002AD9-0000-1000-8000-00805f9b34fb',
+  );
+  static final Uuid _featureCharacteristic = Uuid.parse(
+    '00002ACC-0000-1000-8000-00805f9b34fb',
+  );
 
   final FlutterReactiveBle _ble;
 
@@ -31,6 +41,8 @@ class FtmsTreadmillService implements TreadmillService {
 
   QualifiedCharacteristic? _metricsCharacteristic;
   QualifiedCharacteristic? _controlPointCharacteristicRef;
+  QualifiedCharacteristic? _featureCharacteristicRef;
+  bool _usingIndoorBikeDataFallback = false;
 
   @override
   Stream<List<TreadmillDeviceInfo>> scan() {
@@ -38,28 +50,76 @@ class FtmsTreadmillService implements TreadmillService {
     _discoveredDevices.clear();
     _scanSubscription?.cancel();
     _scanSubscription = _ble
-        .scanForDevices(withServices: [_ftmsServiceUuid], scanMode: ScanMode.lowLatency)
+        .scanForDevices(
+          withServices: [_ftmsServiceUuid],
+          scanMode: ScanMode.lowLatency,
+        )
         .listen(
-      (device) {
-        _discoveredDevices[device.id] = TreadmillDeviceInfo(
-          id: device.id,
-          name: device.name.isEmpty ? 'FTMS Device' : device.name,
-          rssi: device.rssi,
-          vendor: _formatManufacturerData(device.manufacturerData),
-          features: const TreadmillFeatureSupport(
-            supportsSpeedControl: true,
-            supportsInclineControl: true,
-            supportsHeartRate: true,
-          ),
+          (device) {
+            _discoveredDevices[device.id] = TreadmillDeviceInfo(
+              id: device.id,
+              name: device.name.isEmpty ? 'FTMS Device' : device.name,
+              rssi: device.rssi,
+              vendor: _formatManufacturerData(device.manufacturerData),
+              features: const TreadmillFeatureSupport(
+                supportsSpeedControl: true,
+                supportsInclineControl: true,
+                supportsHeartRate: true,
+              ),
+            );
+            _scanController.add(_discoveredDevices.values.toList());
+          },
+          onError: (error, stack) {
+            log('FTMS scan error: $error', stackTrace: stack);
+            _connectionStateController.add(TreadmillConnectionState.error);
+          },
         );
-        _scanController.add(_discoveredDevices.values.toList());
-      },
-      onError: (error, stack) {
-        log('FTMS scan error: $error', stackTrace: stack);
-        _connectionStateController.add(TreadmillConnectionState.error);
-      },
-    );
     return _scanController.stream;
+  }
+
+  Future<QualifiedCharacteristic?> _resolveMetricsCharacteristic(
+    String deviceId,
+  ) async {
+    try {
+      final services = await _ble.discoverServices(deviceId);
+      final ftmsService = services.firstWhere(
+        (service) => service.serviceId == _ftmsServiceUuid,
+        orElse: () => throw StateError('FTMS service not found on device'),
+      );
+      final hasTreadmillData = ftmsService.characteristicIds.contains(
+        _treadmillDataCharacteristic,
+      );
+      final hasBikeData = ftmsService.characteristicIds.contains(
+        _indoorBikeDataCharacteristic,
+      );
+
+      if (hasTreadmillData) {
+        _usingIndoorBikeDataFallback = false;
+        return QualifiedCharacteristic(
+          serviceId: _ftmsServiceUuid,
+          characteristicId: _treadmillDataCharacteristic,
+          deviceId: deviceId,
+        );
+      }
+
+      if (hasBikeData) {
+        _usingIndoorBikeDataFallback = true;
+        log(
+          'Treadmill data characteristic missing. Using Indoor Bike Data (0x2AD2) as fallback.',
+        );
+        return QualifiedCharacteristic(
+          serviceId: _ftmsServiceUuid,
+          characteristicId: _indoorBikeDataCharacteristic,
+          deviceId: deviceId,
+        );
+      }
+
+      log('No FTMS metrics characteristic available on device.');
+      return null;
+    } catch (error, stack) {
+      log('Failed to discover FTMS services: $error', stackTrace: stack);
+      return null;
+    }
   }
 
   String? _formatManufacturerData(Uint8List data) {
@@ -92,61 +152,89 @@ class FtmsTreadmillService implements TreadmillService {
           servicesWithCharacteristicsToDiscover: {
             _ftmsServiceUuid: [
               _treadmillDataCharacteristic,
+              _indoorBikeDataCharacteristic,
               _controlPointCharacteristic,
+              _featureCharacteristic,
             ],
           },
           connectionTimeout: const Duration(seconds: 15),
         )
         .listen(
-      (update) {
-        switch (update.connectionState) {
-          case DeviceConnectionState.connected:
-            _connectionStateController.add(TreadmillConnectionState.connected);
-            _setupCharacteristics(deviceId);
-            break;
-          case DeviceConnectionState.connecting:
-            _connectionStateController.add(TreadmillConnectionState.connecting);
-            break;
-          case DeviceConnectionState.disconnected:
-            _connectionStateController.add(TreadmillConnectionState.disconnected);
-            _metricsSubscription?.cancel();
-            break;
-          case DeviceConnectionState.disconnecting:
-            _connectionStateController.add(TreadmillConnectionState.disconnected);
-            break;
-        }
-      },
-      onError: (error, stack) {
-        log('FTMS connection error: $error', stackTrace: stack);
-        _connectionStateController.add(TreadmillConnectionState.error);
-      },
-    );
+          (update) {
+            switch (update.connectionState) {
+              case DeviceConnectionState.connected:
+                _connectionStateController.add(
+                  TreadmillConnectionState.connected,
+                );
+                _setupCharacteristics(deviceId);
+                break;
+              case DeviceConnectionState.connecting:
+                _connectionStateController.add(
+                  TreadmillConnectionState.connecting,
+                );
+                break;
+              case DeviceConnectionState.disconnected:
+                _connectionStateController.add(
+                  TreadmillConnectionState.disconnected,
+                );
+                _metricsSubscription?.cancel();
+                break;
+              case DeviceConnectionState.disconnecting:
+                _connectionStateController.add(
+                  TreadmillConnectionState.disconnected,
+                );
+                break;
+            }
+          },
+          onError: (error, stack) {
+            log('FTMS connection error: $error', stackTrace: stack);
+            _connectionStateController.add(TreadmillConnectionState.error);
+          },
+        );
   }
 
   void _setupCharacteristics(String deviceId) {
-    _metricsCharacteristic = QualifiedCharacteristic(
-      serviceId: _ftmsServiceUuid,
-      characteristicId: _treadmillDataCharacteristic,
-      deviceId: deviceId,
-    );
     _controlPointCharacteristicRef = QualifiedCharacteristic(
       serviceId: _ftmsServiceUuid,
       characteristicId: _controlPointCharacteristic,
       deviceId: deviceId,
     );
-    _metricsSubscription?.cancel();
-    _metricsSubscription = _ble
-        .subscribeToCharacteristic(_metricsCharacteristic!)
-        .listen(
-      (data) {
-        final metrics = _parseMetrics(data);
-        _metricsController.add(metrics);
-      },
-      onError: (error, stack) {
-        log('FTMS metrics error: $error', stackTrace: stack);
-        _connectionStateController.add(TreadmillConnectionState.error);
-      },
+    _featureCharacteristicRef = QualifiedCharacteristic(
+      serviceId: _ftmsServiceUuid,
+      characteristicId: _featureCharacteristic,
+      deviceId: deviceId,
     );
+
+    _resolveMetricsCharacteristic(deviceId)
+        .then((characteristic) {
+          if (characteristic == null) {
+            _connectionStateController.add(TreadmillConnectionState.error);
+            return;
+          }
+          _metricsCharacteristic = characteristic;
+          _metricsSubscription?.cancel();
+          _metricsSubscription = _ble
+              .subscribeToCharacteristic(characteristic)
+              .listen(
+                (data) {
+                  final metrics = _parseMetrics(data);
+                  _metricsController.add(metrics);
+                },
+                onError: (error, stack) {
+                  log('FTMS metrics error: $error', stackTrace: stack);
+                  _connectionStateController.add(
+                    TreadmillConnectionState.error,
+                  );
+                },
+              );
+        })
+        .catchError((error, stack) {
+          log(
+            'FTMS characteristic resolution failed: $error',
+            stackTrace: stack,
+          );
+          _connectionStateController.add(TreadmillConnectionState.error);
+        });
   }
 
   TreadmillMetrics _parseMetrics(List<int> data) {

@@ -12,6 +12,7 @@ import 'core/ble/mock_treadmill_service.dart';
 import 'core/ble/treadmill_service.dart';
 import 'core/database/app_database.dart';
 import 'core/health/health_service.dart';
+import 'core/permissions/ble_permission_handler.dart';
 import 'core/preferences/user_preferences_repository.dart';
 import 'data/device/device_repository.dart';
 import 'data/programs/programs_repository.dart';
@@ -25,16 +26,17 @@ import 'features/settings/presentation/settings_screen.dart';
 import 'features/workout/bloc/workout_bloc.dart';
 import 'features/workout_summary/cubit/workout_summary_cubit.dart';
 
-const bool _useMockTreadmillService =
-    bool.fromEnvironment('USE_MOCK_TREADMILL', defaultValue: true);
+const bool _useMockTreadmillService = bool.fromEnvironment(
+  'USE_MOCK_TREADMILL',
+  defaultValue: false,
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final preferencesRepository =
       await SharedPreferencesUserPreferencesRepository.create();
   final initialConsent = await preferencesRepository.getShareUsageData();
-  final analyticsService =
-      await AnalyticsServiceFactory.create(initialConsent);
+  final analyticsService = await AnalyticsServiceFactory.create(initialConsent);
   final database = await AppDatabase.open();
   final programsRepository = ProgramsRepository(database.isar);
   await programsRepository.seedDefaultsIfNeeded();
@@ -44,6 +46,7 @@ Future<void> main() async {
   final treadmillService = _useMockTreadmillService
       ? MockTreadmillService()
       : FtmsTreadmillService(FlutterReactiveBle());
+  const blePermissionHandler = BlePermissionHandler();
   final analyticsConsentCubit = AnalyticsConsentCubit(
     preferencesRepository: preferencesRepository,
     analyticsService: analyticsService,
@@ -58,20 +61,15 @@ Future<void> main() async {
           value: preferencesRepository,
         ),
         RepositoryProvider<AppDatabase>.value(value: database),
-        RepositoryProvider<ProgramsRepository>.value(
-          value: programsRepository,
-        ),
+        RepositoryProvider<ProgramsRepository>.value(value: programsRepository),
         RepositoryProvider<WorkoutHistoryRepository>.value(
           value: workoutHistoryRepository,
         ),
-        RepositoryProvider<DeviceRepository>.value(
-          value: deviceRepository,
-        ),
-        RepositoryProvider<HealthService>.value(
-          value: healthService,
-        ),
-        RepositoryProvider<TreadmillService>.value(
-          value: treadmillService,
+        RepositoryProvider<DeviceRepository>.value(value: deviceRepository),
+        RepositoryProvider<HealthService>.value(value: healthService),
+        RepositoryProvider<TreadmillService>.value(value: treadmillService),
+        RepositoryProvider<BlePermissionHandler>.value(
+          value: blePermissionHandler,
         ),
       ],
       child: MultiBlocProvider(
@@ -80,13 +78,15 @@ Future<void> main() async {
             value: analyticsConsentCubit,
           ),
           BlocProvider<ConnectionCubit>(
-            create: (context) =>
-                ConnectionCubit(context.read<TreadmillService>()),
+            create: (context) => ConnectionCubit(
+              context.read<TreadmillService>(),
+              context.read<BlePermissionHandler>(),
+            ),
           ),
           BlocProvider<ProgramsBloc>(
-            create: (context) => ProgramsBloc(
-              context.read<ProgramsRepository>(),
-            )..add(const ProgramsSubscriptionRequested()),
+            create: (context) =>
+                ProgramsBloc(context.read<ProgramsRepository>())
+                  ..add(const ProgramsSubscriptionRequested()),
           ),
           BlocProvider<PreWorkoutCubit>(
             create: (context) => PreWorkoutCubit(
@@ -94,14 +94,13 @@ Future<void> main() async {
             )..loadInitialPlan(),
           ),
           BlocProvider<DashboardCubit>(
-            create: (context) => DashboardCubit(
-              context.read<WorkoutHistoryRepository>(),
-            ),
+            create: (context) =>
+                DashboardCubit(context.read<WorkoutHistoryRepository>()),
           ),
           BlocProvider<WorkoutBloc>(
             create: (context) => WorkoutBloc(
-              workoutHistoryRepository:
-                  context.read<WorkoutHistoryRepository>(),
+              workoutHistoryRepository: context
+                  .read<WorkoutHistoryRepository>(),
               treadmillService: context.read<TreadmillService>(),
             ),
           ),

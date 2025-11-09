@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/analytics/analytics_service.dart';
 import '../../../core/ble/connection_cubit.dart' as connection;
 import '../../../core/ble/treadmill_service.dart';
+import '../../../core/permissions/ble_permission_handler.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../shared/widgets/connection_status_badge.dart';
@@ -414,9 +415,8 @@ class _DistancePicker extends StatelessWidget {
           step: 0.1,
           value: double.parse(value.toStringAsFixed(1)),
           formatter: (v) => '${v.toStringAsFixed(1)} km',
-          onChanged: (v) => cubit.updateGoalDistance(
-            double.parse(v.toStringAsFixed(1)),
-          ),
+          onChanged: (v) =>
+              cubit.updateGoalDistance(double.parse(v.toStringAsFixed(1))),
         ),
       ],
     );
@@ -475,10 +475,10 @@ class _PreWorkoutActions extends StatelessWidget {
     );
   }
 
-  void _handlePrimaryAction(
+  Future<void> _handlePrimaryAction(
     BuildContext context,
     connection.ConnectionState connectionState,
-  ) {
+  ) async {
     final cubit = context.read<PreWorkoutCubit>();
     final state = cubit.state;
     if (state.selectedPlan == null) {
@@ -491,10 +491,20 @@ class _PreWorkoutActions extends StatelessWidget {
     final isConnected =
         connectionState.status == TreadmillConnectionState.connected;
     if (!isConnected) {
-      context.read<connection.ConnectionCubit>().startScan();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Scanning for treadmills...')),
-      );
+      final connectionCubit = context.read<connection.ConnectionCubit>();
+      final scanStarted = await connectionCubit.startScan();
+      final messenger = ScaffoldMessenger.of(context);
+      if (scanStarted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Scanning for treadmills...')),
+        );
+      } else {
+        final latestState = connectionCubit.state;
+        final fallbackMessage =
+            latestState.errorMessage ??
+            _permissionFallbackText(latestState.permissionStatus);
+        messenger.showSnackBar(SnackBar(content: Text(fallbackMessage)));
+      }
       return;
     }
 
@@ -508,6 +518,18 @@ class _PreWorkoutActions extends StatelessWidget {
     );
 
     Navigator.of(context).pop();
+  }
+
+  String _permissionFallbackText(BlePermissionStatus status) {
+    switch (status) {
+      case BlePermissionStatus.denied:
+        return 'Bluetooth permission is required to find your treadmill.';
+      case BlePermissionStatus.permanentlyDenied:
+        return 'Bluetooth access is disabled. Enable it in system settings to connect.';
+      case BlePermissionStatus.granted:
+      case BlePermissionStatus.unknown:
+        return 'Unable to start scan. Please try again.';
+    }
   }
 }
 
@@ -630,19 +652,13 @@ class _ValueWheelState extends State<_ValueWheel> {
             left: 0,
             right: 0,
             top: 60,
-            child: Container(
-              height: 1,
-              color: AppColors.primary.withAlpha(80),
-            ),
+            child: Container(height: 1, color: AppColors.primary.withAlpha(80)),
           ),
           Positioned(
             left: 0,
             right: 0,
             top: 90,
-            child: Container(
-              height: 1,
-              color: AppColors.primary.withAlpha(80),
-            ),
+            child: Container(height: 1, color: AppColors.primary.withAlpha(80)),
           ),
           ListWheelScrollView.useDelegate(
             controller: _controller,
@@ -664,7 +680,9 @@ class _ValueWheelState extends State<_ValueWheel> {
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.white38,
                       fontSize: isSelected ? 28 : 18,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                 );
