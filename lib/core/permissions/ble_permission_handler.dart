@@ -5,9 +5,15 @@ import 'package:permission_handler/permission_handler.dart';
 enum BlePermissionStatus { unknown, granted, denied, permanentlyDenied }
 
 class BlePermissionHandler {
-  const BlePermissionHandler();
+  const BlePermissionHandler({this.skipPlatformPermissions = false});
+
+  final bool skipPlatformPermissions;
 
   Future<BlePermissionStatus> ensurePermissions() async {
+    if (skipPlatformPermissions) {
+      return BlePermissionStatus.granted;
+    }
+
     if (!Platform.isAndroid && !Platform.isIOS) {
       return BlePermissionStatus.granted;
     }

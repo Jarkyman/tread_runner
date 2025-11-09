@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
@@ -26,13 +27,20 @@ import 'features/settings/presentation/settings_screen.dart';
 import 'features/workout/bloc/workout_bloc.dart';
 import 'features/workout_summary/cubit/workout_summary_cubit.dart';
 
-const bool _useMockTreadmillService = bool.fromEnvironment(
+const bool _forceMockTreadmillService = bool.fromEnvironment(
   'USE_MOCK_TREADMILL',
+  defaultValue: false,
+);
+const bool _forceRealTreadmillService = bool.fromEnvironment(
+  'USE_REAL_TREADMILL',
   defaultValue: false,
 );
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final useMockTreadmillService = _forceRealTreadmillService
+      ? false
+      : _forceMockTreadmillService;
   final preferencesRepository =
       await SharedPreferencesUserPreferencesRepository.create();
   final initialConsent = await preferencesRepository.getShareUsageData();
@@ -43,10 +51,12 @@ Future<void> main() async {
   final workoutHistoryRepository = WorkoutHistoryRepository(database.isar);
   final deviceRepository = DeviceRepository(database.isar);
   final healthService = await HealthServiceFactory.create();
-  final treadmillService = _useMockTreadmillService
+  final treadmillService = useMockTreadmillService
       ? MockTreadmillService()
       : FtmsTreadmillService(FlutterReactiveBle());
-  const blePermissionHandler = BlePermissionHandler();
+  final blePermissionHandler = BlePermissionHandler(
+    skipPlatformPermissions: useMockTreadmillService,
+  );
   final analyticsConsentCubit = AnalyticsConsentCubit(
     preferencesRepository: preferencesRepository,
     analyticsService: analyticsService,

@@ -64,6 +64,9 @@
 - [x] Implement FTMS-based service (`FtmsTreadmillService`)
 - [x] Implement a mock treadmill service for simulator/testing
 - [x] Add feature detection: mark unsupported controls so UI can disable buttons
+- [ ] Parse FTMS treadmill metrics data instead of emitting placeholders
+- [ ] Encode FTMS incline control command
+- [ ] Encode FTMS speed control command
 
 ## 4. Health integration (platform channels)
 - [x] Define `HealthService` interface in Dart:
@@ -73,6 +76,14 @@
 - [x] Create iOS method channel skeleton for HealthKit
 - [x] Create Android method channel skeleton for Google Fit
 - [x] Make calls non-blocking and optional (app must work without permissions)
+- [ ] Implement HealthKit requests on iOS:
+  - [ ] Request authorization in `AppDelegate`
+  - [ ] Persist finished workouts to HealthKit
+  - [ ] Query latest heart rate samples from HealthKit
+- [ ] Implement Google Fit bridge on Android:
+  - [ ] Request Google Fit permissions
+  - [ ] Write workout sessions to Google Fit
+  - [ ] Read heart rate data via Google Fit
 
 ## 5. App state (Bloc)
 - [ ] Create global `AppBloc` or `ConnectionCubit` for treadmill connection state
@@ -94,6 +105,7 @@
   - [x] FAB → Pre Workout
 - [x] Load programs from `ProgramsRepository`
 - [x] Load history from `WorkoutHistoryRepository`
+- [ ] Wire “Add Program” card to the create program screen
 
 ## 7. UI – Pre Workout
 - [x] Screen with:
@@ -147,6 +159,11 @@
   - [x] Support (contact, about, privacy)
   - [x] App version footer
 - [x] Hook device list to BLE scan
+- [ ] Persist push notification preference and connect it to scheduled reminders
+- [ ] Enable workout audio cues toggle once audio prompts are implemented
+- [ ] Build privacy settings / data export surface instead of placeholder toast
+- [ ] Show connected device details panel when tapping the device tile
+- [ ] Implement Support links (contact form, about screen, privacy policy)
 
 ## 11.5. App Icon
 - [x] create Appicon to IOS
@@ -160,12 +177,12 @@
 - [ ] Show graceful fallback UIs when denied
 
 ## 13. Testing / mocks
-- [ ] Add a mock device in debug mode that sends:
-  - [ ] speed 8 km/h
-  - [ ] incline 1%
-  - [ ] distance += every second
-  - [ ] hr 140
-- [ ] Use mock device to test Workout screen without real treadmill
+- [x] Add a mock device in debug mode that sends:
+  - [x] speed 8 km/h
+  - [x] incline 1%
+  - [x] distance += every second
+  - [x] hr 140
+- [x] Use mock device to test Workout screen without real treadmill
 - [ ] Add unit tests for:
   - [ ] workout step progression
   - [ ] repeat blocks
@@ -185,6 +202,8 @@
 - [ ] Make dashboard greeting dynamic (time of day + user name)
 - [ ] Allow editing presets for non-run programs on Pre Workout screen
 - [ ] Apply units preference across all speed/distance labels (km ↔ mi, km/h ↔ mph)
+- [ ] Set final Android `applicationId` in `android/app/build.gradle.kts`
+- [ ] Configure Android release signing in `android/app/build.gradle.kts`
 
 ## 16. Out of scope (later)
 - [ ] Strava export

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'treadmill_service.dart';
 
@@ -65,9 +64,11 @@ class MockTreadmillService implements TreadmillService {
     _timer = Timer.periodic(_tick, (_) {
       if (!_connected) return;
       final elapsed = _currentMetrics.elapsed + _tick;
+      final secondsPerTick = _tick.inMilliseconds / 1000;
+      final metersPerSecond = (_currentSpeed * 1000) / 3600;
       final distanceMeters =
-          _currentMetrics.distanceMeters + (_currentSpeed * 1000 / 3600);
-      final heartRate = 135 + Random().nextInt(10);
+          _currentMetrics.distanceMeters + (metersPerSecond * secondsPerTick);
+      const heartRate = 140;
       _currentMetrics = _currentMetrics.copyWith(
         elapsed: elapsed,
         speedKmh: _currentSpeed,
