@@ -10,6 +10,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../shared/widgets/connection_status_badge.dart';
 import '../../workout/bloc/workout_bloc.dart';
+import '../../workout/presentation/workout_screen.dart';
 import '../bloc/pre_workout_cubit.dart';
 
 class PreWorkoutScreen extends StatefulWidget {
@@ -517,7 +518,8 @@ class _PreWorkoutActions extends StatelessWidget {
       ),
     );
 
-    Navigator.of(context).pop();
+    if (!context.mounted) return;
+    Navigator.of(context).pushReplacementNamed(WorkoutScreen.routeName);
   }
 
   String _permissionFallbackText(BlePermissionStatus status) {

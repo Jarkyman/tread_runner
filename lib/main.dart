@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
@@ -25,6 +24,7 @@ import 'features/pre_workout/presentation/pre_workout_screen.dart';
 import 'features/programs/bloc/programs_bloc.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/workout/bloc/workout_bloc.dart';
+import 'features/workout/presentation/workout_screen.dart';
 import 'features/workout_summary/cubit/workout_summary_cubit.dart';
 
 const bool _forceMockTreadmillService = bool.fromEnvironment(
@@ -150,6 +150,7 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
         DashboardScreen.routeName: (_) => const DashboardScreen(),
         SettingsScreen.routeName: (_) => const SettingsScreen(),
         PreWorkoutScreen.routeName: (_) => const PreWorkoutScreen(),
+        WorkoutScreen.routeName: (_) => const WorkoutScreen(),
       },
       home: const DashboardScreen(),
     );

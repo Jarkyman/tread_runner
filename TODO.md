@@ -120,16 +120,17 @@
 - [x] If connected → primary says “Begin Workout” and starts `WorkoutBloc`
 
 ## 8. UI – Workout (live)
-- [ ] Screen with:
-  - [ ] time elapsed (big)
-  - [ ] distance + heart rate cards
-  - [ ] speed control
-  - [ ] incline control
-  - [ ] program timeline (blocks, highlight current)
-  - [ ] current step description
-  - [ ] bottom: Pause, Hold-to-end
-- [ ] Connect to `WorkoutBloc` stream for live values
-- [ ] If connection lost → show warning banner
+- [x] Screen with:
+  - [x] time elapsed (big)
+  - [x] distance + heart rate cards
+  - [x] speed control
+  - [x] incline control
+  - [x] program timeline (blocks, highlight current)
+  - [x] current step description
+  - [x] bottom: Pause, Hold-to-end
+- [x] Connect to `WorkoutBloc` stream for live values
+- [x] If connection lost → show warning banner
+- [ ] Re-add workout header sync indicator once watch/health sync is implemented
 
 ## 9. UI – Workout Summary (Info)
 - [ ] Screen with:
