@@ -141,18 +141,18 @@
 - [ ] Save → store in Isar → return to dashboard
 
 ## 11. UI – Settings
-- [ ] Screen with:
-  - [ ] Device connections (current device, add new)
-  - [ ] App preferences (units, audio cues)
-  - [ ] Support (contact, about, privacy)
-  - [ ] App version footer
-- [ ] Hook device list to BLE scan
+- [x] Screen with:
+  - [x] Device connections (current device, add new)
+  - [x] App preferences (units, audio cues)
+  - [x] Support (contact, about, privacy)
+  - [x] App version footer
+- [x] Hook device list to BLE scan
 
 ## 11.5. App Icon
 - [x] create Appicon to IOS
 - [x] create Appicon to Android
-- [ ] Add Appicon to IOS
-- [ ] Add Appicon to Android
+- [x] Add Appicon to IOS
+- [x] Add Appicon to Android
 
 ## 12. Permissions flow
 - [ ] On first BLE scan → request BT + (Android) location
@@ -184,6 +184,7 @@
 - [ ] Add error toasts/snackbars for BLE errors
 - [ ] Make dashboard greeting dynamic (time of day + user name)
 - [ ] Allow editing presets for non-run programs on Pre Workout screen
+- [ ] Apply units preference across all speed/distance labels (km ↔ mi, km/h ↔ mph)
 
 ## 16. Out of scope (later)
 - [ ] Strava export
