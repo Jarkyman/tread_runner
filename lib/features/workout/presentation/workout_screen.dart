@@ -39,8 +39,9 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
   }
 
   Future<void> _loadUnitsPreference() async {
-    final pref =
-        await context.read<UserPreferencesRepository>().getUnitsPreference();
+    final pref = await context
+        .read<UserPreferencesRepository>()
+        .getUnitsPreference();
     if (!mounted) return;
     setState(() {
       _unitsPreference = pref;
@@ -57,14 +58,16 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           listener: (context, state) {
             final message = state.errorMessage;
             if (message != null && message.isNotEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(message)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(message)));
             }
           },
           builder: (context, state) {
             if (state.status == WorkoutStatus.idle || state.plan == null) {
-              return _WorkoutEmptyState(onClose: () => Navigator.of(context).pop());
+              return _WorkoutEmptyState(
+                onClose: () => Navigator.of(context).pop(),
+              );
             }
 
             final timeline = _WorkoutTimeline.fromPlan(state.plan!);
@@ -73,103 +76,70 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
             return Column(
               children: [
                 const SizedBox(height: 12),
-                _WorkoutHeader(
-                  plan: state.plan!,
-                  status: state.status,
-                ),
+                _WorkoutHeader(plan: state.plan!, status: state.status),
                 if (_isUnitsLoading)
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                     child: LinearProgressIndicator(),
                   ),
                 Expanded(
-                  child: ListView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    children: [
-                      const _ConnectionWarning(),
-                      _TimeStatCard(elapsed: state.elapsed),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _MetricCard(
-                              label: 'Distance',
-                              value: _formatDistance(
-                                state.metrics.distanceMeters,
-                                _unitsPreference,
-                              ),
-                              unit: _distanceUnit(_unitsPreference),
-                              icon: Icons.route,
-                            ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _ConnectionWarning(),
+                        _PrimaryStatsCard(
+                          elapsed: state.elapsed,
+                          distanceMeters: state.metrics.distanceMeters,
+                          heartRate: state.metrics.heartRate,
+                          unitsPreference: _unitsPreference,
+                        ),
+                        const SizedBox(height: 20),
+                        _CompactControlRow(
+                          displaySpeedKmh: state.metrics.speedKmh,
+                          displayInclinePercent: state.metrics.inclinePercent,
+                          unitsPreference: _unitsPreference,
+                          enabled: state.status == WorkoutStatus.running,
+                          onSpeedDelta: (delta) => _changeSpeed(
+                            context,
+                            treadmillService,
+                            state.metrics.speedKmh,
+                            delta,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _MetricCard(
-                              label: 'Heart Rate',
-                              value: state.metrics.heartRate > 0
-                                  ? state.metrics.heartRate.toString()
-                                  : '--',
-                              unit: 'BPM',
-                              icon: Icons.favorite_outline,
-                            ),
+                          onInclineDelta: (delta) => _changeIncline(
+                            context,
+                            treadmillService,
+                            state.metrics.inclinePercent,
+                            delta,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _ControlTile(
-                        label: 'Speed',
-                        value: _formatSpeed(
-                          state.metrics.speedKmh,
-                          _unitsPreference,
                         ),
-                        unit: _speedUnit(_unitsPreference),
-                        onDecrement: () => _changeSpeed(
-                          context,
-                          treadmillService,
-                          state.metrics.speedKmh,
-                          -0.2,
+                        const SizedBox(height: 24),
+                        _WorkoutTimelineView(
+                          plan: state.plan!,
+                          timeline: timeline,
+                          elapsed: state.elapsed,
+                          metrics: state.metrics,
+                          goalDuration: state.goalDuration,
+                          goalDistanceMeters: state.goalDistanceMeters,
+                          currentStepIndex: state.currentStepIndex,
                         ),
-                        onIncrement: () => _changeSpeed(
-                          context,
-                          treadmillService,
-                          state.metrics.speedKmh,
-                          0.2,
+                        const SizedBox(height: 16),
+                        _CurrentSegmentCard(
+                          plan: state.plan!,
+                          timeline: timeline,
+                          elapsed: state.elapsed,
+                          metrics: state.metrics,
+                          goalDuration: state.goalDuration,
+                          goalDistanceMeters: state.goalDistanceMeters,
+                          unitsPreference: _unitsPreference,
                         ),
-                        enabled: state.status == WorkoutStatus.running,
-                      ),
-                      const SizedBox(height: 16),
-                      _ControlTile(
-                        label: 'Incline',
-                        value: state.metrics.inclinePercent.toStringAsFixed(1),
-                        unit: '%',
-                        onDecrement: () => _changeIncline(
-                          context,
-                          treadmillService,
-                          state.metrics.inclinePercent,
-                          -0.5,
-                        ),
-                        onIncrement: () => _changeIncline(
-                          context,
-                          treadmillService,
-                          state.metrics.inclinePercent,
-                          0.5,
-                        ),
-                        enabled: state.status == WorkoutStatus.running,
-                      ),
-                      const SizedBox(height: 24),
-                      _WorkoutTimelineView(
-                        plan: state.plan!,
-                        timeline: timeline,
-                        elapsed: state.elapsed,
-                      ),
-                      const SizedBox(height: 16),
-                      _CurrentSegmentCard(
-                        timeline: timeline,
-                        elapsed: state.elapsed,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                        const Spacer(),
+                      ],
+                    ),
                   ),
                 ),
                 _BottomControls(status: state.status),
@@ -248,8 +218,7 @@ class _ConnectionWarning extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<connection.ConnectionCubit, connection.ConnectionState>(
       builder: (context, state) {
-        final isConnected =
-            state.status == TreadmillConnectionState.connected;
+        final isConnected = state.status == TreadmillConnectionState.connected;
         if (isConnected) {
           return const SizedBox.shrink();
         }
@@ -280,10 +249,18 @@ class _ConnectionWarning extends StatelessWidget {
   }
 }
 
-class _TimeStatCard extends StatelessWidget {
-  const _TimeStatCard({required this.elapsed});
+class _PrimaryStatsCard extends StatelessWidget {
+  const _PrimaryStatsCard({
+    required this.elapsed,
+    required this.distanceMeters,
+    required this.heartRate,
+    required this.unitsPreference,
+  });
 
   final Duration elapsed;
+  final double distanceMeters;
+  final int heartRate;
+  final UnitsPreference unitsPreference;
 
   @override
   Widget build(BuildContext context) {
@@ -291,29 +268,53 @@ class _TimeStatCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: const [
-              Icon(Icons.timer_outlined, color: Colors.white54),
-              SizedBox(width: 8),
-              Text(
-                'Time Elapsed',
-                style: TextStyle(color: Colors.white70),
-              ),
-            ],
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: const [
+                    Icon(Icons.timer_outlined, color: Colors.white54),
+                    SizedBox(width: 8),
+                    Text('Time Elapsed', style: TextStyle(color: Colors.white70)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatElapsed(elapsed),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            _formatElapsed(elapsed),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 44,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
+          const SizedBox(width: 20),
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                _MiniStat(
+                  label: 'Distance',
+                  value: _formatDistance(distanceMeters, unitsPreference),
+                  unit: _distanceUnit(unitsPreference),
+                ),
+                const SizedBox(height: 16),
+                _MiniStat(
+                  label: 'Heart Rate',
+                  value: heartRate > 0 ? heartRate.toString() : '--',
+                  unit: 'BPM',
+                ),
+              ],
             ),
           ),
         ],
@@ -322,58 +323,85 @@ class _TimeStatCard extends StatelessWidget {
   }
 }
 
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.unit,
-    required this.icon,
-  });
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({required this.label, required this.value, required this.unit});
 
   final String label;
   final String value;
   final String unit;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.white54),
-              const SizedBox(width: 8),
-              Text(label, style: const TextStyle(color: Colors.white70)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 6),
-              Text(
-                unit,
-                style: const TextStyle(color: Colors.white54),
-              ),
-            ],
+            ),
+            const SizedBox(width: 4),
+            Text(unit, style: const TextStyle(color: Colors.white54)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactControlRow extends StatelessWidget {
+  const _CompactControlRow({
+    required this.displaySpeedKmh,
+    required this.displayInclinePercent,
+    required this.unitsPreference,
+    required this.onSpeedDelta,
+    required this.onInclineDelta,
+    required this.enabled,
+  });
+
+  final double displaySpeedKmh;
+  final double displayInclinePercent;
+  final UnitsPreference unitsPreference;
+  final ValueChanged<double> onSpeedDelta;
+  final ValueChanged<double> onInclineDelta;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ControlTile(
+            label: 'Speed',
+            value: _formatSpeed(displaySpeedKmh, unitsPreference),
+            unit: _speedUnit(unitsPreference),
+            onDecrement: () => onSpeedDelta(-0.1),
+            onIncrement: () => onSpeedDelta(0.1),
+            enabled: enabled,
+            dense: true,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _ControlTile(
+            label: 'Incline',
+            value: displayInclinePercent.toStringAsFixed(1),
+            unit: '%',
+            onDecrement: () => onInclineDelta(-1),
+            onIncrement: () => onInclineDelta(1),
+            enabled: enabled,
+            dense: true,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -386,6 +414,7 @@ class _ControlTile extends StatelessWidget {
     required this.onDecrement,
     required this.onIncrement,
     required this.enabled,
+    this.dense = false,
   });
 
   final String label;
@@ -394,11 +423,17 @@ class _ControlTile extends StatelessWidget {
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
   final bool enabled;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
+    final double buttonSize = dense ? 48 : 56;
+    final double iconSize = dense ? 20 : 24;
+    final double fontSize = dense ? 26 : 32;
+    final EdgeInsets padding = EdgeInsets.all(dense ? 14 : 16);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: padding,
       decoration: BoxDecoration(
         color: AppColors.secondary,
         borderRadius: BorderRadius.circular(20),
@@ -413,6 +448,7 @@ class _ControlTile extends StatelessWidget {
                     ? Icons.speed_outlined
                     : Icons.landscape_outlined,
                 color: Colors.white54,
+                size: iconSize,
               ),
               const SizedBox(width: 8),
               Text(label, style: const TextStyle(color: Colors.white70)),
@@ -424,6 +460,8 @@ class _ControlTile extends StatelessWidget {
               _ControlButton(
                 icon: Icons.remove,
                 onPressed: enabled ? onDecrement : null,
+                size: buttonSize,
+                iconSize: iconSize,
               ),
               Expanded(
                 child: Column(
@@ -431,9 +469,9 @@ class _ControlTile extends StatelessWidget {
                     Text(
                       value,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
+                        fontSize: fontSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -451,6 +489,8 @@ class _ControlTile extends StatelessWidget {
               _ControlButton(
                 icon: Icons.add,
                 onPressed: enabled ? onIncrement : null,
+                size: buttonSize,
+                iconSize: iconSize,
               ),
             ],
           ),
@@ -461,20 +501,27 @@ class _ControlTile extends StatelessWidget {
 }
 
 class _ControlButton extends StatelessWidget {
-  const _ControlButton({required this.icon, required this.onPressed});
+  const _ControlButton({
+    required this.icon,
+    required this.onPressed,
+    this.size = 56,
+    this.iconSize = 24,
+  });
 
   final IconData icon;
   final VoidCallback? onPressed;
+  final double size;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 56,
-      height: 56,
+      width: size,
+      height: size,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.zero,
-          minimumSize: const Size(56, 56),
+          minimumSize: Size(size, size),
           backgroundColor:
               onPressed == null ? Colors.white12 : Colors.white.withAlpha(20),
           foregroundColor: Colors.white,
@@ -483,7 +530,7 @@ class _ControlButton extends StatelessWidget {
           ),
         ),
         onPressed: onPressed,
-        child: Center(child: Icon(icon, size: 24)),
+        child: Center(child: Icon(icon, size: iconSize)),
       ),
     );
   }
@@ -494,81 +541,165 @@ class _WorkoutTimelineView extends StatelessWidget {
     required this.plan,
     required this.timeline,
     required this.elapsed,
+    required this.metrics,
+    this.goalDuration,
+    this.goalDistanceMeters,
+    required this.currentStepIndex,
   });
 
   final WorkoutPlan plan;
   final _WorkoutTimeline timeline;
   final Duration elapsed;
+  final TreadmillMetrics metrics;
+  final Duration? goalDuration;
+  final double? goalDistanceMeters;
+  final int currentStepIndex;
 
   @override
   Widget build(BuildContext context) {
-    if (timeline.segments.isEmpty) {
-      return const SizedBox.shrink();
-    }
     final color = Color(plan.colorValue);
+    final segments = timeline.segments;
+    final hasSegments = segments.isNotEmpty;
+    final fallbackProgress = _singleGoalProgress();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Workout Timeline',
-          style: TextStyle(
-            color: Colors.white70,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            for (var i = 0; i < timeline.segments.length; i++)
-              Expanded(
-                flex: max(1, timeline.segments[i].duration.inSeconds),
-                child: Container(
-                  height: 14,
-                  margin: EdgeInsets.only(right: i == timeline.segments.length - 1 ? 0 : 4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Colors.white10,
-                  ),
-                  child: Stack(
-                    children: [
-                      FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: timeline.segmentProgress(i, elapsed),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: color,
-                          ),
-                        ),
+        if (hasSegments)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final totalDurationMs = segments.fold<int>(
+                0,
+                (sum, segment) => sum + segment.duration.inMilliseconds,
+              );
+              final spacing = 8.0;
+              final availableWidth = max(
+                0.0,
+                constraints.maxWidth - spacing * (segments.length - 1),
+              );
+              const activeScale = 1.35;
+              const inactiveScale = 0.85;
+              final fractions = segments
+                  .map(
+                    (segment) =>
+                        segment.duration.inMilliseconds / totalDurationMs,
+                  )
+                  .toList();
+              final scaledTotal = fractions.asMap().entries.fold<double>(
+                0,
+                (sum, entry) {
+                  final scale =
+                      entry.key == currentStepIndex ? activeScale : inactiveScale;
+                  return sum + entry.value * scale;
+                },
+              );
+              return Row(
+                children: [
+                  for (var i = 0; i < segments.length; i++) ...[
+                    _AnimatedSegment(
+                      width: availableWidth *
+                          (fractions[i] *
+                              (i == currentStepIndex
+                                  ? activeScale
+                                  : inactiveScale) /
+                              scaledTotal),
+                      progress: timeline.segmentProgress(i, elapsed),
+                      isActive: i == currentStepIndex,
+                      isComplete: i < currentStepIndex,
+                      color: color,
+                    ),
+                    if (i != segments.length - 1) SizedBox(width: spacing),
+                  ],
+                ],
+              );
+            },
+          )
+        else if (fallbackProgress != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Stack(
+              children: [
+                Container(
+                  height: 28,
+                  color: Colors.white10,
+                ),
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 400),
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: fallbackProgress,
+                    child: Container(
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: color,
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-          ],
-        ),
+              ],
+            ),
+          )
+        else
+          const Text(
+            'Progress will appear when a goal is set.',
+            style: TextStyle(color: Colors.white38, fontSize: 12),
+          ),
       ],
     );
+  }
+
+  double? _singleGoalProgress() {
+    if (goalDuration != null && goalDuration!.inSeconds > 0) {
+      final ratio = elapsed.inSeconds / goalDuration!.inSeconds;
+      return ratio.clamp(0, 1).toDouble();
+    }
+    if (goalDistanceMeters != null && goalDistanceMeters! > 0) {
+      final ratio = metrics.distanceMeters / goalDistanceMeters!;
+      return ratio.clamp(0, 1).toDouble();
+    }
+    return null;
   }
 }
 
 class _CurrentSegmentCard extends StatelessWidget {
   const _CurrentSegmentCard({
+    required this.plan,
     required this.timeline,
     required this.elapsed,
+    required this.metrics,
+    required this.unitsPreference,
+    this.goalDuration,
+    this.goalDistanceMeters,
   });
 
+  final WorkoutPlan plan;
   final _WorkoutTimeline timeline;
   final Duration elapsed;
+  final TreadmillMetrics metrics;
+  final UnitsPreference unitsPreference;
+  final Duration? goalDuration;
+  final double? goalDistanceMeters;
 
   @override
   Widget build(BuildContext context) {
     final segment = timeline.currentSegment(elapsed);
     if (segment == null) {
-      return const SizedBox.shrink();
+      return _GoalSummaryCard(
+        plan: plan,
+        elapsed: elapsed,
+        goalDuration: goalDuration,
+        goalDistanceMeters: goalDistanceMeters,
+        metrics: metrics,
+        unitsPreference: unitsPreference,
+      );
     }
-    final remaining =
-        segment.end > elapsed ? segment.end - elapsed : Duration.zero;
+    final remaining = segment.end > elapsed
+        ? segment.end - elapsed
+        : Duration.zero;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -582,10 +713,7 @@ class _CurrentSegmentCard extends StatelessWidget {
             children: const [
               Icon(Icons.play_circle_outline, color: Colors.white70),
               SizedBox(width: 8),
-              Text(
-                'Current Segment',
-                style: TextStyle(color: Colors.white70),
-              ),
+              Text('Current Segment', style: TextStyle(color: Colors.white70)),
             ],
           ),
           const SizedBox(height: 12),
@@ -603,6 +731,135 @@ class _CurrentSegmentCard extends StatelessWidget {
             style: const TextStyle(color: Colors.white70),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GoalSummaryCard extends StatelessWidget {
+  const _GoalSummaryCard({
+    required this.plan,
+    required this.elapsed,
+    required this.metrics,
+    required this.unitsPreference,
+    this.goalDuration,
+    this.goalDistanceMeters,
+  });
+
+  final WorkoutPlan plan;
+  final Duration elapsed;
+  final TreadmillMetrics metrics;
+  final UnitsPreference unitsPreference;
+  final Duration? goalDuration;
+  final double? goalDistanceMeters;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = '${plan.name} Goal';
+    final subtitle = _buildSubtitle();
+    if (subtitle == null) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.green.shade900.withAlpha(120),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.flag_outlined, color: Colors.white70),
+              SizedBox(width: 8),
+              Text('Current Goal', style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _buildSubtitle() {
+    if (goalDuration != null && goalDuration!.inSeconds > 0) {
+      final remaining = goalDuration! - elapsed;
+      final clamped =
+          remaining.isNegative ? Duration.zero : remaining;
+      return '${_formatElapsed(clamped)} remaining';
+    }
+    if (goalDistanceMeters != null && goalDistanceMeters! > 0) {
+      final remaining = goalDistanceMeters! - metrics.distanceMeters;
+      final double clamped = remaining < 0 ? 0.0 : remaining;
+      final remainingText =
+          _formatDistance(clamped, unitsPreference);
+      return '$remainingText ${_distanceUnit(unitsPreference)} remaining';
+    }
+    return null;
+  }
+}
+
+class _AnimatedSegment extends StatelessWidget {
+  const _AnimatedSegment({
+    required this.width,
+    required this.progress,
+    required this.isActive,
+    required this.isComplete,
+    required this.color,
+  });
+
+  final double width;
+  final double progress;
+  final bool isActive;
+  final bool isComplete;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final baseColor = isComplete
+        ? color
+        : isActive
+            ? color.withAlpha((0.85 * 255).round())
+            : Colors.white24;
+    final height = isActive ? 30.0 : 24.0;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.white10,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 350),
+          alignment: Alignment.centerLeft,
+          child: FractionallySizedBox(
+            widthFactor: progress.clamp(0, 1),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 350),
+              decoration: BoxDecoration(
+                color: baseColor,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -634,19 +891,23 @@ class _PauseResumeButton extends StatefulWidget {
 class _PauseResumeButtonState extends State<_PauseResumeButton>
     with SingleTickerProviderStateMixin {
   static const Duration _holdDuration = Duration(seconds: 3);
+  static const Duration _holdActivationDelay = Duration(milliseconds: 150);
 
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: _holdDuration,
   );
   Timer? _holdTimer;
-  bool _holdCompleted = false;
+  Timer? _holdStartTimer;
+  bool _isHolding = false;
 
   bool get _isInteractive => widget.status != WorkoutStatus.completed;
+  bool get _canHoldToEnd => widget.status == WorkoutStatus.paused;
 
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _holdStartTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -661,34 +922,51 @@ class _PauseResumeButtonState extends State<_PauseResumeButton>
 
   void _handleTapDown(TapDownDetails details) {
     if (!_isInteractive) return;
-    _holdCompleted = false;
-    _controller.forward(from: 0);
-    _holdTimer?.cancel();
-    _holdTimer = Timer(_holdDuration, () {
-      _holdCompleted = true;
-      _controller.value = 1;
-      _stopWorkout();
+    if (!_canHoldToEnd) return;
+    _cancelHold(reset: true);
+    _holdStartTimer = Timer(_holdActivationDelay, () {
+      if (!mounted || !_canHoldToEnd) return;
+      setState(() {
+        _isHolding = true;
+      });
+      _controller.forward(from: 0);
+      _holdTimer = Timer(_holdDuration, () {
+        _controller.value = 1;
+        _stopWorkout();
+      });
     });
   }
 
   void _handleTapUp(TapUpDetails details) {
     if (!_isInteractive) return;
-    final completed = _holdCompleted;
-    _cancelHold(reset: !completed);
-    if (!completed) {
-      _togglePauseResume();
+    if (_canHoldToEnd) {
+      final wasHolding = _isHolding;
+      _cancelHold(reset: true);
+      if (!wasHolding) {
+        _togglePauseResume();
+      }
+      return;
     }
+    _togglePauseResume();
   }
 
   void _handleTapCancel() {
     if (!_isInteractive) return;
-    _cancelHold(reset: true);
+    if (_canHoldToEnd) {
+      _cancelHold(reset: true);
+    }
   }
 
   void _cancelHold({required bool reset}) {
     _holdTimer?.cancel();
+    _holdStartTimer?.cancel();
     if (reset) {
       _controller.reset();
+    }
+    if (_isHolding) {
+      setState(() {
+        _isHolding = false;
+      });
     }
   }
 
@@ -702,6 +980,7 @@ class _PauseResumeButtonState extends State<_PauseResumeButton>
   }
 
   void _stopWorkout() {
+    _cancelHold(reset: true);
     final bloc = context.read<WorkoutBloc>();
     bloc.add(const WorkoutStopped());
     if (!mounted) return;
@@ -712,11 +991,9 @@ class _PauseResumeButtonState extends State<_PauseResumeButton>
   Widget build(BuildContext context) {
     final isPaused = widget.status == WorkoutStatus.paused;
     final isComplete = widget.status == WorkoutStatus.completed;
-    final baseColor =
-        isComplete ? Colors.white24 : AppColors.primary;
+    final baseColor = isComplete ? Colors.white24 : AppColors.primary;
     final textColor = isComplete ? Colors.white70 : Colors.black;
-    final label =
-        isPaused ? 'Resume (Hold 3 sec to end)' : 'Pause';
+    final label = isPaused ? 'Resume (Hold 3 sec to end)' : 'Pause';
 
     return AnimatedBuilder(
       animation: _controller,
@@ -739,14 +1016,15 @@ class _PauseResumeButtonState extends State<_PauseResumeButton>
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: FractionallySizedBox(
-                        widthFactor:
-                            isComplete ? 0 : _controller.value,
+                        widthFactor: isComplete || !_isHolding
+                            ? 0
+                            : _controller.value,
                         child: Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                Colors.white.withAlpha((0.35 * 255).round()),
-                                Colors.white.withAlpha((0.05 * 255).round()),
+                                AppColors.primary.withAlpha(220),
+                                Colors.white.withAlpha(90),
                               ],
                             ),
                           ),
@@ -862,10 +1140,7 @@ class _WorkoutEmptyState extends StatelessWidget {
             style: TextStyle(color: Colors.white60),
           ),
           const SizedBox(height: 24),
-          OutlinedButton(
-            onPressed: onClose,
-            child: const Text('Close'),
-          ),
+          OutlinedButton(onPressed: onClose, child: const Text('Close')),
         ],
       ),
     );
@@ -915,8 +1190,7 @@ String _distanceUnit(UnitsPreference preference) {
 }
 
 String _formatSpeed(double kmh, UnitsPreference preference) {
-  final value =
-      preference == UnitsPreference.metric ? kmh : kmh * 0.621371;
+  final value = preference == UnitsPreference.metric ? kmh : kmh * 0.621371;
   return value.toStringAsFixed(1);
 }
 

@@ -509,12 +509,21 @@ class _PreWorkoutActions extends StatelessWidget {
       return;
     }
 
+    final goalDuration =
+        state.goalType == PreWorkoutGoalType.duration ? state.goalDuration : null;
+    final double? goalDistanceMeters =
+        state.goalType == PreWorkoutGoalType.distance
+            ? state.goalDistanceKm * 1000
+            : null;
+
     context.read<WorkoutBloc>().add(
       WorkoutStarted(
         plan: state.selectedPlan!,
         initialSpeedKmh: state.targetSpeedKmh,
         initialInclinePercent: state.targetInclinePercent,
         deviceId: connectionState.connectedDeviceId,
+        goalDuration: goalDuration,
+        goalDistanceMeters: goalDistanceMeters,
       ),
     );
 

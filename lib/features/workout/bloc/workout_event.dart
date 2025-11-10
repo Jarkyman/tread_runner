@@ -13,16 +13,27 @@ class WorkoutStarted extends WorkoutEvent {
     required this.initialSpeedKmh,
     required this.initialInclinePercent,
     this.deviceId,
+    this.goalDuration,
+    this.goalDistanceMeters,
   });
 
   final WorkoutPlan plan;
   final double initialSpeedKmh;
   final double initialInclinePercent;
   final String? deviceId;
+  final Duration? goalDuration;
+  final double? goalDistanceMeters;
 
   @override
   List<Object?> get props =>
-      [plan, initialSpeedKmh, initialInclinePercent, deviceId];
+      [
+        plan,
+        initialSpeedKmh,
+        initialInclinePercent,
+        deviceId,
+        goalDuration,
+        goalDistanceMeters,
+      ];
 }
 
 class WorkoutPaused extends WorkoutEvent {

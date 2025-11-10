@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:math';
 
 import '../../../core/ble/treadmill_service.dart';
 import '../../../core/utils/ticker.dart';
@@ -9,7 +10,7 @@ import '../../../data/workout_history/workout_history_repository.dart';
 import '../../../domain/models/workout_metric_sample.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_session.dart';
-
+import '../../../domain/models/workout_step.dart';
 part 'workout_event.dart';
 part 'workout_state.dart';
 
@@ -36,6 +37,9 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
 
   StreamSubscription<int>? _tickerSubscription;
   StreamSubscription<TreadmillMetrics>? _metricsSubscription;
+  double? _resumeSpeedKmh;
+  double? _resumeInclinePercent;
+  TreadmillMetrics? _metricsBaseline;
 
   Future<void> _onStarted(
     WorkoutStarted event,
@@ -43,6 +47,9 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
   ) async {
     await _tickerSubscription?.cancel();
     await _metricsSubscription?.cancel();
+    _resumeSpeedKmh = null;
+    _resumeInclinePercent = null;
+    _metricsBaseline = null;
 
     try {
       await _treadmillService.setSpeed(event.initialSpeedKmh);
@@ -68,6 +75,8 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
         samples: const <WorkoutMetricSample>[],
         completedSession: null,
         errorMessage: null,
+        goalDuration: event.goalDuration,
+        goalDistanceMeters: event.goalDistanceMeters,
       ),
     );
   }
@@ -78,7 +87,14 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
   ) async {
     if (state.status != WorkoutStatus.running) return;
     _tickerSubscription?.pause();
+    _resumeSpeedKmh = state.metrics.speedKmh;
+    _resumeInclinePercent = state.metrics.inclinePercent;
     emit(state.copyWith(status: WorkoutStatus.paused));
+    try {
+      await _treadmillService.setSpeed(0);
+    } catch (_) {
+      // Ignore lack of support.
+    }
   }
 
   Future<void> _onResumed(
@@ -86,8 +102,26 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     Emitter<WorkoutState> emit,
   ) async {
     if (state.status != WorkoutStatus.paused) return;
+    final targetSpeed = _resumeSpeedKmh;
+    final targetIncline = _resumeInclinePercent;
     _tickerSubscription?.resume();
     emit(state.copyWith(status: WorkoutStatus.running));
+    if (targetSpeed != null) {
+      try {
+        await _treadmillService.setSpeed(targetSpeed);
+      } catch (_) {
+        // non fatal
+      }
+      _resumeSpeedKmh = null;
+    }
+    if (targetIncline != null) {
+      try {
+        await _treadmillService.setIncline(targetIncline);
+      } catch (_) {
+        // ignore
+      }
+      _resumeInclinePercent = null;
+    }
   }
 
   Future<void> _onStopped(
@@ -109,6 +143,8 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
         completedSession: session,
       ),
     );
+    _resumeSpeedKmh = null;
+    _resumeInclinePercent = null;
   }
 
   void _onTicked(
@@ -127,22 +163,31 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     _WorkoutMetricsUpdated event,
     Emitter<WorkoutState> emit,
   ) {
-    if (state.status == WorkoutStatus.idle) return;
+    if (state.status != WorkoutStatus.running) return;
     final sample = WorkoutMetricSample(
-      elapsedSeconds: event.metrics.elapsed.inSeconds,
+      elapsedSeconds: _relativeElapsed(event.metrics).inSeconds,
       speedKmh: event.metrics.speedKmh,
       inclinePercent: event.metrics.inclinePercent,
-      distanceMeters: event.metrics.distanceMeters,
+      distanceMeters: _relativeDistance(event.metrics),
       heartRate: event.metrics.heartRate,
     );
 
     final updatedSamples = List<WorkoutMetricSample>.from(state.samples)
       ..add(sample);
 
+    final updatedStepIndex = _resolveStepIndex(state.plan, state.elapsed);
+    if (updatedStepIndex != state.currentStepIndex && state.plan != null) {
+      unawaited(_applyStepTargets(state.plan!, updatedStepIndex));
+    }
+
     emit(
       state.copyWith(
-        metrics: event.metrics,
+        metrics: event.metrics.copyWith(
+          elapsed: _relativeElapsed(event.metrics),
+          distanceMeters: _relativeDistance(event.metrics),
+        ),
         samples: updatedSamples,
+        currentStepIndex: updatedStepIndex,
       ),
     );
   }
@@ -162,6 +207,103 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
   Future<void> close() async {
     await _tickerSubscription?.cancel();
     await _metricsSubscription?.cancel();
+    _resumeSpeedKmh = null;
+    _resumeInclinePercent = null;
+    _metricsBaseline = null;
     return super.close();
   }
+
+  Duration _relativeElapsed(TreadmillMetrics metrics) {
+    _metricsBaseline ??= metrics;
+    final baseline = _metricsBaseline!;
+    final diff = metrics.elapsed - baseline.elapsed;
+    return diff.isNegative ? Duration.zero : diff;
+  }
+
+  double _relativeDistance(TreadmillMetrics metrics) {
+    _metricsBaseline ??= metrics;
+    final baseline = _metricsBaseline!;
+    final diff = metrics.distanceMeters - baseline.distanceMeters;
+    if (diff.isNegative) return 0;
+    return diff;
+  }
+  int _resolveStepIndex(WorkoutPlan? plan, Duration elapsed) {
+    if (plan == null || plan.steps.isEmpty) return 0;
+    final segments = _calculateSegments(plan);
+    for (var i = 0; i < segments.length; i++) {
+      final segment = segments[i];
+      if (elapsed < segment.end) {
+        return i;
+      }
+    }
+    return max(0, segments.length - 1);
+  }
+
+  List<_CalculatedSegment> _calculateSegments(WorkoutPlan plan) {
+    final segments = <_CalculatedSegment>[];
+    var cursor = Duration.zero;
+    for (final step in plan.steps) {
+      final repeats = max(1, step.repeatCount ?? 1);
+      for (var i = 0; i < repeats; i++) {
+        final duration = _estimateStepDuration(step);
+        segments.add(
+          _CalculatedSegment(
+            start: cursor,
+            end: cursor + duration,
+            step: step,
+          ),
+        );
+        cursor += duration;
+      }
+    }
+    return segments;
+  }
+
+  Duration _estimateStepDuration(WorkoutStep step) {
+    if (step.durationSeconds != null && step.durationSeconds! > 0) {
+      return Duration(seconds: step.durationSeconds!);
+    }
+    if (step.distanceMeters != null && step.targetSpeedKmh != null) {
+      final metersPerSecond = (step.targetSpeedKmh! * 1000) / 3600;
+      if (metersPerSecond > 0) {
+        final seconds = (step.distanceMeters! / metersPerSecond).round();
+        return Duration(seconds: max(1, seconds));
+      }
+    }
+    return const Duration(minutes: 1);
+  }
+
+  Future<void> _applyStepTargets(
+    WorkoutPlan plan,
+    int stepIndex,
+  ) async {
+    final segments = _calculateSegments(plan);
+    if (stepIndex < 0 || stepIndex >= segments.length) return;
+    final step = segments[stepIndex].step;
+    final futures = <Future<void>>[];
+    if (step.targetSpeedKmh != null) {
+      futures.add(_treadmillService.setSpeed(step.targetSpeedKmh!));
+    }
+    if (step.inclinePercent != null) {
+      futures.add(_treadmillService.setIncline(step.inclinePercent!));
+    }
+    if (futures.isEmpty) return;
+    try {
+      await Future.wait(futures);
+    } catch (_) {
+      // Ignore device control errors for unsupported treadmills.
+    }
+  }
+}
+
+class _CalculatedSegment {
+  _CalculatedSegment({
+    required this.start,
+    required this.end,
+    required this.step,
+  });
+
+  final Duration start;
+  final Duration end;
+  final WorkoutStep step;
 }

@@ -14,6 +14,8 @@ class WorkoutState extends Equatable {
     this.samples = const <WorkoutMetricSample>[],
     this.completedSession,
     this.errorMessage,
+    this.goalDuration,
+    this.goalDistanceMeters,
   });
 
   final WorkoutStatus status;
@@ -26,6 +28,8 @@ class WorkoutState extends Equatable {
   final List<WorkoutMetricSample> samples;
   final WorkoutSession? completedSession;
   final String? errorMessage;
+  final Duration? goalDuration;
+  final double? goalDistanceMeters;
 
   WorkoutState copyWith({
     WorkoutStatus? status,
@@ -38,6 +42,8 @@ class WorkoutState extends Equatable {
     List<WorkoutMetricSample>? samples,
     WorkoutSession? completedSession,
     String? errorMessage,
+    Duration? goalDuration,
+    double? goalDistanceMeters,
   }) {
     return WorkoutState(
       status: status ?? this.status,
@@ -50,6 +56,8 @@ class WorkoutState extends Equatable {
       samples: samples ?? this.samples,
       completedSession: completedSession ?? this.completedSession,
       errorMessage: errorMessage ?? this.errorMessage,
+      goalDuration: goalDuration ?? this.goalDuration,
+      goalDistanceMeters: goalDistanceMeters ?? this.goalDistanceMeters,
     );
   }
 
@@ -65,5 +73,7 @@ class WorkoutState extends Equatable {
         samples,
         completedSession,
         errorMessage,
+        goalDuration,
+        goalDistanceMeters,
       ];
 }

@@ -211,3 +211,4 @@
 - [ ] Watch companion
 - [ ] AI workout summary
 - [ ] Program marketplace
+- [ ] Remove temporary “Timeline Demo” debug workout plan once live UI is finalized
