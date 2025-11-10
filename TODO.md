@@ -133,15 +133,15 @@
 - [ ] Re-add workout header sync indicator once watch/health sync is implemented
 
 ## 9. UI – Workout Summary (Info)
-- [ ] Screen with:
-  - [ ] program title
-  - [ ] date/time (start–end)
-  - [ ] main stats: time, distance, avg speed, calories
-  - [ ] chart placeholder (speed/incline/HR)
-  - [ ] splits list
-  - [ ] notes field
-  - [ ] bottom: Share / Done
-- [ ] On Done → save to history
+- [x] Screen with:
+  - [x] program title
+  - [x] date/time (start–end)
+  - [x] main stats: time, distance, avg speed, calories
+  - [x] chart placeholder (speed/incline/HR)
+  - [x] splits list
+  - [x] notes field
+  - [x] bottom: Share / Done
+- [x] On Done → save to history
 
 ## 10. UI – Create Program
 - [ ] Screen with:

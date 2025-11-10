@@ -13,6 +13,7 @@ class WorkoutSession {
     this.endedAt,
     this.deviceId,
     List<WorkoutMetricSample>? samples,
+    this.note,
   }) : metrics = samples ?? <WorkoutMetricSample>[];
 
   Id id;
@@ -26,4 +27,6 @@ class WorkoutSession {
   String? deviceId;
 
   List<WorkoutMetricSample> metrics;
+
+  String? note;
 }

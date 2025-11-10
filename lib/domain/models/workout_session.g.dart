@@ -33,13 +33,18 @@ const WorkoutSessionSchema = CollectionSchema(
       type: IsarType.objectList,
       target: r'WorkoutMetricSample',
     ),
-    r'planId': PropertySchema(
+    r'note': PropertySchema(
       id: 3,
+      name: r'note',
+      type: IsarType.string,
+    ),
+    r'planId': PropertySchema(
+      id: 4,
       name: r'planId',
       type: IsarType.long,
     ),
     r'startedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'startedAt',
       type: IsarType.dateTime,
     )
@@ -79,6 +84,12 @@ int _workoutSessionEstimateSize(
           WorkoutMetricSampleSchema.estimateSize(value, offsets, allOffsets);
     }
   }
+  {
+    final value = object.note;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -96,8 +107,9 @@ void _workoutSessionSerialize(
     WorkoutMetricSampleSchema.serialize,
     object.metrics,
   );
-  writer.writeLong(offsets[3], object.planId);
-  writer.writeDateTime(offsets[4], object.startedAt);
+  writer.writeString(offsets[3], object.note);
+  writer.writeLong(offsets[4], object.planId);
+  writer.writeDateTime(offsets[5], object.startedAt);
 }
 
 WorkoutSession _workoutSessionDeserialize(
@@ -110,8 +122,9 @@ WorkoutSession _workoutSessionDeserialize(
     deviceId: reader.readStringOrNull(offsets[0]),
     endedAt: reader.readDateTimeOrNull(offsets[1]),
     id: id,
-    planId: reader.readLongOrNull(offsets[3]),
-    startedAt: reader.readDateTime(offsets[4]),
+    note: reader.readStringOrNull(offsets[3]),
+    planId: reader.readLongOrNull(offsets[4]),
+    startedAt: reader.readDateTime(offsets[5]),
   );
   object.metrics = reader.readObjectList<WorkoutMetricSample>(
         offsets[2],
@@ -143,8 +156,10 @@ P _workoutSessionDeserializeProp<P>(
           ) ??
           []) as P;
     case 3:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
+      return (reader.readLongOrNull(offset)) as P;
+    case 5:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -620,6 +635,160 @@ extension WorkoutSessionQueryFilter
   }
 
   QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'note',
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'note',
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'note',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'note',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'note',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'note',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'note',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'note',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'note',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'note',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'note',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
+      noteIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'note',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterFilterCondition>
       planIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -791,6 +960,18 @@ extension WorkoutSessionQuerySortBy
     });
   }
 
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterSortBy> sortByNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'note', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterSortBy> sortByNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'note', Sort.desc);
+    });
+  }
+
   QueryBuilder<WorkoutSession, WorkoutSession, QAfterSortBy> sortByPlanId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'planId', Sort.asc);
@@ -858,6 +1039,18 @@ extension WorkoutSessionQuerySortThenBy
     });
   }
 
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterSortBy> thenByNote() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'note', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WorkoutSession, WorkoutSession, QAfterSortBy> thenByNoteDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'note', Sort.desc);
+    });
+  }
+
   QueryBuilder<WorkoutSession, WorkoutSession, QAfterSortBy> thenByPlanId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'planId', Sort.asc);
@@ -900,6 +1093,13 @@ extension WorkoutSessionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WorkoutSession, WorkoutSession, QDistinct> distinctByNote(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'note', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<WorkoutSession, WorkoutSession, QDistinct> distinctByPlanId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'planId');
@@ -938,6 +1138,12 @@ extension WorkoutSessionQueryProperty
       metricsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'metrics');
+    });
+  }
+
+  QueryBuilder<WorkoutSession, String?, QQueryOperations> noteProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'note');
     });
   }
 

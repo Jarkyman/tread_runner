@@ -10,6 +10,8 @@ import '../../pre_workout/presentation/pre_workout_screen.dart';
 import '../../programs/bloc/programs_bloc.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../shared/widgets/connection_status_badge.dart';
+import '../../workout_summary/cubit/workout_summary_cubit.dart';
+import '../../workout_summary/presentation/workout_summary_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -326,34 +328,61 @@ class _HistoryList extends StatelessWidget {
         final duration = _formatDuration(
           (session.endedAt ?? DateTime.now()).difference(session.startedAt),
         );
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.secondary,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withAlpha((0.1 * 255).round()),
+        return InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () {
+            context.read<WorkoutSummaryCubit>().showSession(session);
+            Navigator.of(context).pushNamed(
+              WorkoutSummaryScreen.routeName,
+              arguments: WorkoutSummaryArgs(session: session),
+            );
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withAlpha((0.1 * 255).round()),
+                  ),
+                  child: const Icon(
+                    Icons.local_fire_department,
+                    color: Colors.white70,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.local_fire_department,
-                  color: Colors.white70,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Program #${session.planId ?? '-'}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatDate(session.startedAt),
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'Program #${session.planId ?? '-'}',
+                      duration,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -361,30 +390,13 @@ class _HistoryList extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _formatDate(session.startedAt),
+                      _formatDistance(session),
                       style: const TextStyle(color: Colors.white54),
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    duration,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatDistance(session),
-                    style: const TextStyle(color: Colors.white54),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }).toList(),

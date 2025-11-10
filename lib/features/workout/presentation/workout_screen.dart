@@ -13,6 +13,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_step.dart';
 import '../../shared/widgets/connection_status_badge.dart';
+import '../../workout_summary/cubit/workout_summary_cubit.dart';
+import '../../workout_summary/presentation/workout_summary_screen.dart';
 import '../bloc/workout_bloc.dart';
 
 class WorkoutScreen extends StatefulWidget {
@@ -27,6 +29,7 @@ class WorkoutScreen extends StatefulWidget {
 class _WorkoutScreenState extends State<WorkoutScreen> {
   UnitsPreference _unitsPreference = UnitsPreference.metric;
   bool _isUnitsLoading = true;
+  bool _navigatedToSummary = false;
 
   @override
   void initState() {
@@ -61,6 +64,23 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text(message)));
+            }
+            if (!_navigatedToSummary &&
+                state.status == WorkoutStatus.completed &&
+                state.completedSession != null) {
+              _navigatedToSummary = true;
+              final summaryCubit = context.read<WorkoutSummaryCubit>();
+              summaryCubit.showSession(
+                state.completedSession!,
+                plan: state.plan,
+              );
+              Navigator.of(context).pushReplacementNamed(
+                WorkoutSummaryScreen.routeName,
+                arguments: WorkoutSummaryArgs(
+                  session: state.completedSession!,
+                  plan: state.plan,
+                ),
+              );
             }
           },
           builder: (context, state) {
@@ -983,8 +1003,6 @@ class _PauseResumeButtonState extends State<_PauseResumeButton>
     _cancelHold(reset: true);
     final bloc = context.read<WorkoutBloc>();
     bloc.add(const WorkoutStopped());
-    if (!mounted) return;
-    Navigator.of(context).pop();
   }
 
   @override

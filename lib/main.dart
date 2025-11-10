@@ -26,6 +26,7 @@ import 'features/settings/presentation/settings_screen.dart';
 import 'features/workout/bloc/workout_bloc.dart';
 import 'features/workout/presentation/workout_screen.dart';
 import 'features/workout_summary/cubit/workout_summary_cubit.dart';
+import 'features/workout_summary/presentation/workout_summary_screen.dart';
 
 const bool _forceMockTreadmillService = bool.fromEnvironment(
   'USE_MOCK_TREADMILL',
@@ -115,7 +116,10 @@ Future<void> main() async {
             ),
           ),
           BlocProvider<WorkoutSummaryCubit>(
-            create: (_) => WorkoutSummaryCubit(),
+            create: (context) => WorkoutSummaryCubit(
+              historyRepository: context.read<WorkoutHistoryRepository>(),
+              programsRepository: context.read<ProgramsRepository>(),
+            ),
           ),
         ],
         child: const TreadRunnerApp(),
@@ -151,6 +155,7 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
         SettingsScreen.routeName: (_) => const SettingsScreen(),
         PreWorkoutScreen.routeName: (_) => const PreWorkoutScreen(),
         WorkoutScreen.routeName: (_) => const WorkoutScreen(),
+        WorkoutSummaryScreen.routeName: (_) => const WorkoutSummaryScreen(),
       },
       home: const DashboardScreen(),
     );
