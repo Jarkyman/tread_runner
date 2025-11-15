@@ -5,6 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/programs/programs_repository.dart';
+import '../../shared/widgets/app_card.dart';
+import '../../shared/widgets/duration_distance_toggle.dart';
+import '../../shared/widgets/metric_adjuster.dart';
+import '../../shared/widgets/value_wheel_picker.dart';
 import '../create_program_cubit.dart';
 
 class CreateProgramScreen extends StatelessWidget {
@@ -274,12 +278,8 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<CreateProgramCubit>();
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(24),
-      ),
+    return AppCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -304,22 +304,35 @@ class _SectionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          _ControlRow(
-            label: 'Speed',
-            value: '${section.speedKmh.toStringAsFixed(1)} km/h',
-            onDecrement: () => cubit.updateSpeed(section.id, -0.1),
-            onIncrement: () => cubit.updateSpeed(section.id, 0.1),
+          MetricAdjuster(
+            title: 'Speed',
+            value: section.speedKmh,
+            unit: 'km/h',
+            min: 1,
+            max: 20,
+            step: 0.1,
+            style: MetricAdjusterStyle.inline,
+            onChanged: (value) =>
+                cubit.setSpeedValue(section.id, value),
           ),
           const SizedBox(height: 12),
-          _ControlRow(
-            label: 'Incline',
-            value: '${section.inclinePercent} %',
-            onDecrement: () => cubit.updateIncline(section.id, -1),
-            onIncrement: () => cubit.updateIncline(section.id, 1),
+          MetricAdjuster(
+            title: 'Incline',
+            value: section.inclinePercent.toDouble(),
+            unit: '%',
+            min: 0,
+            max: 15,
+            step: 1,
+            decimals: 0,
+            style: MetricAdjusterStyle.inline,
+            onChanged: (value) =>
+                cubit.setInclineValue(section.id, value),
           ),
           const SizedBox(height: 16),
-          _GoalToggle(
-            value: section.goalType,
+          DurationDistanceToggle<ProgramSectionGoalType>(
+            durationValue: ProgramSectionGoalType.duration,
+            distanceValue: ProgramSectionGoalType.distance,
+            currentValue: section.goalType,
             onChanged: (value) => cubit.updateGoalType(section.id, value),
           ),
           const SizedBox(height: 12),
@@ -410,117 +423,6 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _ControlRow extends StatelessWidget {
-  const _ControlRow({
-    required this.label,
-    required this.value,
-    required this.onDecrement,
-    required this.onIncrement,
-  });
-
-  final String label;
-  final String value;
-  final VoidCallback onDecrement;
-  final VoidCallback onIncrement;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(color: Colors.white70)),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Row(
-          children: [
-            _RoundButton(icon: Icons.remove, onPressed: onDecrement),
-            const SizedBox(width: 12),
-            _RoundButton(icon: Icons.add, onPressed: onIncrement),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _RoundButton extends StatelessWidget {
-  const _RoundButton({required this.icon, required this.onPressed});
-
-  final IconData icon;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 44,
-      height: 44,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white10,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        onPressed: onPressed,
-        child: Icon(icon),
-      ),
-    );
-  }
-}
-
-class _GoalToggle extends StatelessWidget {
-  const _GoalToggle({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final ProgramSectionGoalType value;
-  final ValueChanged<ProgramSectionGoalType> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return ToggleButtons(
-      isSelected: [
-        value == ProgramSectionGoalType.duration,
-        value == ProgramSectionGoalType.distance,
-      ],
-      onPressed: (index) => onChanged(
-        index == 0
-            ? ProgramSectionGoalType.duration
-            : ProgramSectionGoalType.distance,
-      ),
-      borderRadius: BorderRadius.circular(20),
-      fillColor: AppColors.primary.withAlpha(60),
-      selectedColor: Colors.white,
-      color: Colors.white54,
-      children: const [
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
-          child: Text('Duration'),
-        ),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
-          child: Text('Distance'),
-        ),
-      ],
-    );
-  }
-}
-
 class _DurationPicker extends StatelessWidget {
   const _DurationPicker({required this.value, required this.onChanged});
 
@@ -529,27 +431,24 @@ class _DurationPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = List.generate(60, (index) => index + 1);
-    return _PickerContainer(
-      child: DropdownButton<int>(
-        value: value,
-        dropdownColor: AppColors.secondary,
-        isExpanded: true,
-        style: const TextStyle(color: Colors.white),
-        items: options
-            .map(
-              (minutes) => DropdownMenuItem(
-                value: minutes,
-                child: Text('$minutes min'),
-              ),
-            )
-            .toList(),
-        onChanged: (minutes) {
-          if (minutes != null) {
-            onChanged(minutes);
-          }
-        },
-      ),
+    final normalized = value.clamp(1, 90);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Duration',
+          style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        ValueWheelPicker(
+          min: 1,
+          max: 90,
+          step: 1,
+          value: normalized.toDouble(),
+          labelBuilder: (minutes) => '${minutes.toInt()} min',
+          onChanged: (minutes) => onChanged(minutes.toInt()),
+        ),
+      ],
     );
   }
 }
@@ -562,49 +461,25 @@ class _DistancePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final options = List<int>.generate(500, (index) => (index + 1) * 100);
-    return _PickerContainer(
-      child: DropdownButton<int>(
-        value: value.clamp(100, 50000),
-        dropdownColor: AppColors.secondary,
-        isExpanded: true,
-        style: const TextStyle(color: Colors.white),
-        items: options
-            .map(
-              (meters) => DropdownMenuItem(
-                value: meters,
-                child: Text(
-                  meters >= 1000
-                      ? '${(meters / 1000).toStringAsFixed(1)} km'
-                      : '$meters m',
-                ),
-              ),
-            )
-            .toList(),
-        onChanged: (meters) {
-          if (meters != null) {
-            onChanged(meters);
-          }
-        },
-      ),
-    );
-  }
-}
-
-class _PickerContainer extends StatelessWidget {
-  const _PickerContainer({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: Colors.white10,
-      ),
-      child: child,
+    final kilometers = (value / 1000).clamp(0.1, 50.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Distance',
+          style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        ValueWheelPicker(
+          min: 0.1,
+          max: 50,
+          step: 0.1,
+          value: double.parse(kilometers.toStringAsFixed(1)),
+          labelBuilder: (value) =>
+              value >= 1 ? '${value.toStringAsFixed(1)} km' : '${(value * 1000).round()} m',
+          onChanged: (km) => onChanged((km * 1000).round()),
+        ),
+      ],
     );
   }
 }

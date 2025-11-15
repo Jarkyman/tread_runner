@@ -159,11 +159,31 @@ class CreateProgramCubit extends Cubit<CreateProgramState> {
     emit(state.copyWith(sections: sections));
   }
 
+  void setSpeedValue(int id, double value) {
+    final normalized = value.clamp(1, 20);
+    final sections = state.sections.map((section) {
+      if (section.id != id) return section;
+      return section.copyWith(
+        speedKmh: double.parse(normalized.toStringAsFixed(1)),
+      );
+    }).toList();
+    emit(state.copyWith(sections: sections));
+  }
+
   void updateIncline(int id, int delta) {
     final sections = state.sections.map((section) {
       if (section.id != id) return section;
       final newIncline = (section.inclinePercent + delta).clamp(0, 15);
       return section.copyWith(inclinePercent: newIncline);
+    }).toList();
+    emit(state.copyWith(sections: sections));
+  }
+
+  void setInclineValue(int id, double value) {
+    final normalized = value.clamp(0, 15).round();
+    final sections = state.sections.map((section) {
+      if (section.id != id) return section;
+      return section.copyWith(inclinePercent: normalized);
     }).toList();
     emit(state.copyWith(sections: sections));
   }

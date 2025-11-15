@@ -1,4 +1,3 @@
-import 'package:animated_toggle_switch/animated_toggle_switch.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,7 +7,11 @@ import '../../../core/ble/treadmill_service.dart';
 import '../../../core/permissions/ble_permission_handler.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
+import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/connection_status_badge.dart';
+import '../../shared/widgets/duration_distance_toggle.dart';
+import '../../shared/widgets/metric_adjuster.dart';
+import '../../shared/widgets/value_wheel_picker.dart';
 import '../../workout/bloc/workout_bloc.dart';
 import '../../workout/presentation/workout_screen.dart';
 import '../bloc/pre_workout_cubit.dart';
@@ -87,25 +90,37 @@ class _PreWorkoutBody extends StatelessWidget {
               _ProgramHeader(state: state),
               const SizedBox(height: 24),
               if (allowsAdjustments) ...[
-                _ControlTile(
+                MetricAdjuster(
                   title: 'Speed',
-                  value: state.targetSpeedKmh,
                   unit: 'km/h',
+                  value: state.targetSpeedKmh,
+                  min: 1,
+                  max: 25,
+                  step: 0.1,
                   enabled: allowsAdjustments,
                   onChanged: (value) =>
                       context.read<PreWorkoutCubit>().updateSpeed(value),
                 ),
                 const SizedBox(height: 16),
-                _ControlTile(
+                MetricAdjuster(
                   title: 'Incline',
-                  value: state.targetInclinePercent,
                   unit: '%',
+                  value: state.targetInclinePercent,
+                  min: 0,
+                  max: 20,
+                  step: 1,
+                  decimals: 0,
                   enabled: allowsAdjustments,
                   onChanged: (value) =>
                       context.read<PreWorkoutCubit>().updateIncline(value),
                 ),
                 const SizedBox(height: 24),
-                _GoalSelector(state: state),
+                DurationDistanceToggle<PreWorkoutGoalType>(
+                  durationValue: PreWorkoutGoalType.duration,
+                  distanceValue: PreWorkoutGoalType.distance,
+                  currentValue: state.goalType,
+                  onChanged: context.read<PreWorkoutCubit>().updateGoalType,
+                ),
                 const SizedBox(height: 16),
                 _GoalPicker(state: state),
               ] else ...[
@@ -131,12 +146,7 @@ class _ProgramHeader extends StatelessWidget {
     final plan = state.selectedPlan!;
     final iconData = _programIcon(plan);
     final tint = Color(plan.colorValue);
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.all(20),
+    return AppCard(
       child: Row(
         children: [
           Container(
@@ -212,136 +222,6 @@ class _ProgramHeader extends StatelessWidget {
   }
 }
 
-class _ControlTile extends StatelessWidget {
-  const _ControlTile({
-    required this.title,
-    required this.value,
-    required this.unit,
-    required this.onChanged,
-    this.enabled = true,
-  });
-
-  final String title;
-  final double value;
-  final String unit;
-  final ValueChanged<double> onChanged;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white54,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _RoundIconButton(
-                icon: Icons.remove,
-                onTap: enabled
-                    ? () => onChanged((value - _step).clamp(_min, _max))
-                    : null,
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    '${value.toStringAsFixed(1)} $unit',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              _RoundIconButton(
-                icon: Icons.add,
-                onTap: enabled
-                    ? () => onChanged((value + _step).clamp(_min, _max))
-                    : null,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  double get _step => title == 'Speed' ? 0.1 : 1.0;
-  double get _min => title == 'Speed' ? 0 : 0;
-  double get _max => title == 'Speed' ? 25 : 20;
-}
-
-class _GoalSelector extends StatelessWidget {
-  const _GoalSelector({required this.state});
-
-  final PreWorkoutState state;
-
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<PreWorkoutCubit>();
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(32),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: AnimatedToggleSwitch<PreWorkoutGoalType>.size(
-        current: state.goalType,
-        values: const [
-          PreWorkoutGoalType.duration,
-          PreWorkoutGoalType.distance,
-        ],
-        selectedIconScale: 1.0,
-        iconAnimationType: AnimationType.onHover,
-        customIconBuilder: (context, local, global) {
-          final value = local.value;
-          final isActive = global.current == value;
-          return Center(
-            child: Text(
-              value == PreWorkoutGoalType.duration ? 'Duration' : 'Distance',
-              style: TextStyle(
-                color: isActive ? Colors.black : Colors.white70,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          );
-        },
-        indicatorSize: const Size.fromWidth(240),
-        spacing: 0,
-        style: ToggleStyle(
-          backgroundColor: AppColors.secondary,
-          borderColor: AppColors.secondary,
-          borderRadius: BorderRadius.circular(26),
-          indicatorColor: AppColors.primary,
-          indicatorBorderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.transparent,
-              spreadRadius: 1,
-              blurRadius: 3,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        onChanged: (value) => cubit.updateGoalType(value),
-      ),
-    );
-  }
-}
-
 class _GoalPicker extends StatelessWidget {
   const _GoalPicker({required this.state});
 
@@ -379,12 +259,12 @@ class _DurationPicker extends StatelessWidget {
           style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
-        _ValueWheel(
-          min: 1,
+        ValueWheelPicker(
+          min: 5,
           max: 120,
           step: 1,
           value: minutes.toDouble(),
-          formatter: (value) => '${value.toInt()} min',
+          labelBuilder: (value) => '${value.toInt()} min',
           onChanged: (value) =>
               cubit.updateGoalDuration(Duration(minutes: value.toInt())),
         ),
@@ -410,12 +290,12 @@ class _DistancePicker extends StatelessWidget {
           style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
-        _ValueWheel(
+        ValueWheelPicker(
           min: 0.1,
           max: 50,
           step: 0.1,
           value: double.parse(value.toStringAsFixed(1)),
-          formatter: (v) => '${v.toStringAsFixed(1)} km',
+          labelBuilder: (v) => '${v.toStringAsFixed(1)} km',
           onChanged: (v) =>
               cubit.updateGoalDistance(double.parse(v.toStringAsFixed(1))),
         ),
@@ -494,6 +374,7 @@ class _PreWorkoutActions extends StatelessWidget {
     if (!isConnected) {
       final connectionCubit = context.read<connection.ConnectionCubit>();
       final scanStarted = await connectionCubit.startScan();
+      if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       if (scanStarted) {
         messenger.showSnackBar(
@@ -544,42 +425,13 @@ class _PreWorkoutActions extends StatelessWidget {
   }
 }
 
-class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30),
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withAlpha((0.08 * 255).round()),
-        ),
-        child: Icon(icon, color: Colors.white),
-      ),
-    );
-  }
-}
-
 class _LockedProgramNotice extends StatelessWidget {
   const _LockedProgramNotice();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.secondary,
-        borderRadius: BorderRadius.circular(28),
-      ),
-      child: const Column(
+    return const AppCard(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -599,121 +451,5 @@ class _LockedProgramNotice extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _ValueWheel extends StatefulWidget {
-  const _ValueWheel({
-    required this.min,
-    required this.max,
-    required this.step,
-    required this.value,
-    required this.formatter,
-    required this.onChanged,
-  });
-
-  final double min;
-  final double max;
-  final double step;
-  final double value;
-  final ValueChanged<double> onChanged;
-  final String Function(double) formatter;
-
-  @override
-  State<_ValueWheel> createState() => _ValueWheelState();
-}
-
-class _ValueWheelState extends State<_ValueWheel> {
-  late FixedExtentScrollController _controller;
-  late int _currentIndex;
-
-  int get _itemCount => ((widget.max - widget.min) / widget.step).round() + 1;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentIndex = _indexFromValue(widget.value);
-    _controller = FixedExtentScrollController(initialItem: _currentIndex);
-  }
-
-  @override
-  void didUpdateWidget(covariant _ValueWheel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final newIndex = _indexFromValue(widget.value);
-    if (newIndex != _currentIndex) {
-      _currentIndex = newIndex;
-      _controller.jumpToItem(_currentIndex);
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 150,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 60,
-            child: Container(height: 1, color: AppColors.primary.withAlpha(80)),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 90,
-            child: Container(height: 1, color: AppColors.primary.withAlpha(80)),
-          ),
-          ListWheelScrollView.useDelegate(
-            controller: _controller,
-            itemExtent: 36,
-            perspective: 0.002,
-            physics: const FixedExtentScrollPhysics(),
-            onSelectedItemChanged: (index) {
-              setState(() => _currentIndex = index);
-              widget.onChanged(_valueFromIndex(index));
-            },
-            childDelegate: ListWheelChildBuilderDelegate(
-              builder: (context, index) {
-                if (index < 0 || index >= _itemCount) return null;
-                final value = _valueFromIndex(index);
-                final isSelected = index == _currentIndex;
-                return Center(
-                  child: Text(
-                    widget.formatter(value),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.white38,
-                      fontSize: isSelected ? 28 : 18,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  int _indexFromValue(double value) {
-    final clamped = value.clamp(widget.min, widget.max);
-    return ((clamped - widget.min) / widget.step).round();
-  }
-
-  double _valueFromIndex(int index) {
-    final raw = widget.min + index * widget.step;
-    final clamped = raw.clamp(widget.min, widget.max);
-    final decimals = widget.step >= 1 ? 0 : 1;
-    return double.parse(clamped.toStringAsFixed(decimals));
   }
 }
