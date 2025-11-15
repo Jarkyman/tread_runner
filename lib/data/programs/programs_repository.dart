@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 
 import '../../domain/models/workout_plan.dart';
@@ -10,6 +11,7 @@ class ProgramsRepository {
   static final WorkoutPlan _timelineDemoPlan = WorkoutPlan(
     name: 'Timeline Demo',
     colorValue: 0xFF8E24AA,
+    iconCodePoint: Icons.show_chart.codePoint,
     initialSteps: [
       WorkoutStep(
         type: WorkoutStepType.warmup,
@@ -85,6 +87,7 @@ class ProgramsRepository {
       WorkoutPlan(
         name: '20 Minute Tempo',
         colorValue: 0xFFE65100,
+        iconCodePoint: Icons.timer.codePoint,
         initialSteps: [
           WorkoutStep(
             type: WorkoutStepType.warmup,
@@ -109,6 +112,7 @@ class ProgramsRepository {
       WorkoutPlan(
         name: 'Interval Booster',
         colorValue: 0xFF1E88E5,
+        iconCodePoint: Icons.speed.codePoint,
         initialSteps: [
           WorkoutStep(
             type: WorkoutStepType.warmup,
@@ -137,6 +141,7 @@ class ProgramsRepository {
       WorkoutPlan(
         name: 'Hill Climber',
         colorValue: 0xFF43A047,
+        iconCodePoint: Icons.landscape.codePoint,
         initialSteps: [
           WorkoutStep(
             type: WorkoutStepType.warmup,

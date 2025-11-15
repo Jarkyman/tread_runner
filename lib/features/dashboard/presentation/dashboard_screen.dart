@@ -8,6 +8,7 @@ import '../../../domain/models/workout_session.dart';
 import '../../dashboard/cubit/dashboard_cubit.dart';
 import '../../pre_workout/presentation/pre_workout_screen.dart';
 import '../../programs/bloc/programs_bloc.dart';
+import '../../programs/presentation/create_program_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../../shared/widgets/connection_status_badge.dart';
 import '../../workout_summary/cubit/workout_summary_cubit.dart';
@@ -166,6 +167,9 @@ class _ProgramCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Color(plan.colorValue);
+    final iconCode =
+        plan.iconCodePoint == 0 ? Icons.directions_run.codePoint : plan.iconCodePoint;
+    final iconData = IconData(iconCode, fontFamily: 'MaterialIcons');
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -179,6 +183,10 @@ class _ProgramCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Align(
+            alignment: Alignment.topRight,
+            child: Icon(iconData, color: Colors.white70),
+          ),
           Text(
             plan.name,
             style: Theme.of(
@@ -205,7 +213,7 @@ class _AddProgramCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // TODO: Navigate to create program screen.
+        Navigator.of(context).pushNamed(CreateProgramScreen.routeName);
       },
       child: _DottedBorderCard(
         child: Center(

@@ -10,6 +10,7 @@ class WorkoutPlan {
     this.id = Isar.autoIncrement,
     required this.name,
     required this.colorValue,
+    this.iconCodePoint = 0xE566,
     List<WorkoutStep>? initialSteps,
   }) : steps = initialSteps ?? <WorkoutStep>[];
 
@@ -19,6 +20,9 @@ class WorkoutPlan {
 
   /// ARGB color stored as 0xAARRGGBB integer.
   int colorValue;
+
+  /// Material icon code point used for the program badge.
+  int iconCodePoint;
 
   List<WorkoutStep> steps;
 }

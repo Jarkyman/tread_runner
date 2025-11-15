@@ -144,14 +144,14 @@
 - [x] On Done → save to history
 
 ## 10. UI – Create Program
-- [ ] Screen with:
-  - [ ] name field
-  - [ ] color picker
-  - [ ] 1..N section cards
-  - [ ] each card: speed, incline, duration/distance toggle, picker
-  - [ ] repeat button + delete button
-  - [ ] “Add new section” skeleton
-- [ ] Save → store in Isar → return to dashboard
+- [x] Screen with:
+  - [x] name field
+  - [x] color picker
+  - [x] 1..N section cards
+  - [x] each card: speed, incline, duration/distance toggle, picker
+  - [x] repeat button + delete button
+  - [x] “Add new section” skeleton
+- [x] Save → store in Isar → return to dashboard
 
 ## 11. UI – Settings
 - [x] Screen with:

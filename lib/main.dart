@@ -22,6 +22,7 @@ import 'features/dashboard/presentation/dashboard_screen.dart';
 import 'features/pre_workout/bloc/pre_workout_cubit.dart';
 import 'features/pre_workout/presentation/pre_workout_screen.dart';
 import 'features/programs/bloc/programs_bloc.dart';
+import 'features/programs/presentation/create_program_screen.dart';
 import 'features/settings/presentation/settings_screen.dart';
 import 'features/workout/bloc/workout_bloc.dart';
 import 'features/workout/presentation/workout_screen.dart';
@@ -155,6 +156,7 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
         SettingsScreen.routeName: (_) => const SettingsScreen(),
         PreWorkoutScreen.routeName: (_) => const PreWorkoutScreen(),
         WorkoutScreen.routeName: (_) => const WorkoutScreen(),
+        CreateProgramScreen.routeName: (_) => const CreateProgramScreen(),
         WorkoutSummaryScreen.routeName: (_) => const WorkoutSummaryScreen(),
       },
       home: const DashboardScreen(),

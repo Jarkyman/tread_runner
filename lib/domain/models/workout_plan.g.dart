@@ -22,13 +22,18 @@ const WorkoutPlanSchema = CollectionSchema(
       name: r'colorValue',
       type: IsarType.long,
     ),
-    r'name': PropertySchema(
+    r'iconCodePoint': PropertySchema(
       id: 1,
+      name: r'iconCodePoint',
+      type: IsarType.long,
+    ),
+    r'name': PropertySchema(
+      id: 2,
       name: r'name',
       type: IsarType.string,
     ),
     r'steps': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'steps',
       type: IsarType.objectList,
       target: r'WorkoutStep',
@@ -73,9 +78,10 @@ void _workoutPlanSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeLong(offsets[0], object.colorValue);
-  writer.writeString(offsets[1], object.name);
+  writer.writeLong(offsets[1], object.iconCodePoint);
+  writer.writeString(offsets[2], object.name);
   writer.writeObjectList<WorkoutStep>(
-    offsets[2],
+    offsets[3],
     allOffsets,
     WorkoutStepSchema.serialize,
     object.steps,
@@ -90,11 +96,12 @@ WorkoutPlan _workoutPlanDeserialize(
 ) {
   final object = WorkoutPlan(
     colorValue: reader.readLong(offsets[0]),
+    iconCodePoint: reader.readLongOrNull(offsets[1]) ?? 0xE566,
     id: id,
-    name: reader.readString(offsets[1]),
+    name: reader.readString(offsets[2]),
   );
   object.steps = reader.readObjectList<WorkoutStep>(
-        offsets[2],
+        offsets[3],
         WorkoutStepSchema.deserialize,
         allOffsets,
         WorkoutStep(),
@@ -113,8 +120,10 @@ P _workoutPlanDeserializeProp<P>(
     case 0:
       return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset) ?? 0xE566) as P;
     case 2:
+      return (reader.readString(offset)) as P;
+    case 3:
       return (reader.readObjectList<WorkoutStep>(
             offset,
             WorkoutStepSchema.deserialize,
@@ -268,6 +277,62 @@ extension WorkoutPlanQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'colorValue',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterFilterCondition>
+      iconCodePointEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'iconCodePoint',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterFilterCondition>
+      iconCodePointGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'iconCodePoint',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterFilterCondition>
+      iconCodePointLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'iconCodePoint',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterFilterCondition>
+      iconCodePointBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'iconCodePoint',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -576,6 +641,19 @@ extension WorkoutPlanQuerySortBy
     });
   }
 
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterSortBy> sortByIconCodePoint() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCodePoint', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterSortBy>
+      sortByIconCodePointDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCodePoint', Sort.desc);
+    });
+  }
+
   QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -600,6 +678,19 @@ extension WorkoutPlanQuerySortThenBy
   QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterSortBy> thenByColorValueDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'colorValue', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterSortBy> thenByIconCodePoint() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCodePoint', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QAfterSortBy>
+      thenByIconCodePointDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'iconCodePoint', Sort.desc);
     });
   }
 
@@ -636,6 +727,12 @@ extension WorkoutPlanQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WorkoutPlan, WorkoutPlan, QDistinct> distinctByIconCodePoint() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'iconCodePoint');
+    });
+  }
+
   QueryBuilder<WorkoutPlan, WorkoutPlan, QDistinct> distinctByName(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -655,6 +752,12 @@ extension WorkoutPlanQueryProperty
   QueryBuilder<WorkoutPlan, int, QQueryOperations> colorValueProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'colorValue');
+    });
+  }
+
+  QueryBuilder<WorkoutPlan, int, QQueryOperations> iconCodePointProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'iconCodePoint');
     });
   }
 
