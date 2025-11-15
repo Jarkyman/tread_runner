@@ -30,7 +30,6 @@
   - [ ] Add unit tests for repeat blocks
   - [ ] Add unit tests for timeline rendering model
 - **Analytics & Config**
-  - [ ] Provide real Firebase config for Web, macOS, Windows, Linux
   - [ ] Validate analytics on Android & iOS
   - [ ] Verify GA dashboard events
 
