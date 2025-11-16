@@ -19,6 +19,7 @@
   - [x] Shared widget kit for toggles, pickers, and cards
   - [x] AppStatusCubit + connection telemetry surfaced globally
   - [x] ProgramsBloc hooked up for create/edit/duplicate/delete
+  - [x] Analytics validated across Android/iOS DebugView
 
 ## MVP (to ship)
 - **App State & Blocs**
@@ -31,9 +32,6 @@
   - [ ] Add unit tests for workout step progression
   - [ ] Add unit tests for repeat blocks
   - [ ] Add unit tests for timeline rendering model
-- **Analytics & Config**
-  - [ ] Validate analytics on Android & iOS
-  - [ ] Verify GA dashboard events
 
 ## Improvements
 - **UI / UX Polish**

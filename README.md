@@ -29,6 +29,12 @@ flutter run --dart-define USE_MOCK_TREADMILL=true
 - Preloaded demo workouts sync instantly so you can test dashboards + summaries.
 - Set `--dart-define USE_REAL_TREADMILL=true` if you ever need to override and force the real BLE service even when another flag is on.
 
+## Analytics debugging
+Firebase Analytics runs through `AnalyticsService`. To check events:
+- **Android:** `adb shell setprop log.tag.FA VERBOSE && adb shell setprop log.tag.FA-SVC VERBOSE`, then `adb logcat -v time | grep FA`. To stream into DebugView use `adb shell setprop debug.firebase.analytics.app com.hartvig_solutions.tread_runner`.
+- **iOS:** launch from Xcode with the argument `-FIRAnalyticsDebugEnabled` to send events to DebugView immediately.
+- Flip the “Share usage data” toggle in Settings to ensure consent wiring toggles collection on/off without restarting the app.
+
 ## Misc
 - `TODO.md` tracks the current roadmap.
 - App icon assets live in `assets/app_icon.png` and are wired through `flutter_launcher_icons`.

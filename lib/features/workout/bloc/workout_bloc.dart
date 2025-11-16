@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:math';
+import 'package:isar/isar.dart';
 
+import '../../../core/analytics/analytics_service.dart';
 import '../../../core/ble/treadmill_service.dart';
 import '../../../core/utils/ticker.dart';
 import '../../../data/workout_history/workout_history_repository.dart';
@@ -18,11 +20,13 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
   WorkoutBloc({
     required WorkoutHistoryRepository workoutHistoryRepository,
     required TreadmillService treadmillService,
+    required AnalyticsService analyticsService,
     Ticker ticker = const Ticker(),
-  }) : _historyRepository = workoutHistoryRepository,
-       _treadmillService = treadmillService,
-       _ticker = ticker,
-       super(const WorkoutState()) {
+  })  : _historyRepository = workoutHistoryRepository,
+        _treadmillService = treadmillService,
+        _analytics = analyticsService,
+        _ticker = ticker,
+        super(const WorkoutState()) {
     on<WorkoutStarted>(_onStarted);
     on<WorkoutPaused>(_onPaused);
     on<WorkoutResumed>(_onResumed);
@@ -33,6 +37,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
 
   final WorkoutHistoryRepository _historyRepository;
   final TreadmillService _treadmillService;
+  final AnalyticsService _analytics;
   final Ticker _ticker;
   List<_CalculatedSegment> _segments = const [];
   bool _autoStopRequested = false;
@@ -61,6 +66,14 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     } catch (_) {
       // Non-fatal: controls might be unsupported.
     }
+
+    unawaited(
+      _analytics.logWorkoutStarted(
+        programId: event.plan.id != Isar.autoIncrement
+            ? event.plan.id.toString()
+            : null,
+      ),
+    );
 
     _segments = _calculateSegments(event.plan);
     if (_segments.isNotEmpty) {
@@ -146,6 +159,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     final session = _buildSession(state);
     if (session != null) {
       await _historyRepository.saveSession(session);
+      unawaited(_logWorkoutCompleted(session));
     }
 
     emit(
@@ -317,6 +331,17 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     } catch (_) {
       // Ignore device control errors for unsupported treadmills.
     }
+  }
+
+  Future<void> _logWorkoutCompleted(WorkoutSession session) async {
+    final ended = session.endedAt ?? DateTime.now();
+    final duration = ended.difference(session.startedAt);
+    final distanceMeters =
+        session.metrics.isNotEmpty ? (session.metrics.last.distanceMeters ?? 0) : 0;
+    await _analytics.logWorkoutCompleted(
+      duration: duration,
+      distanceKm: distanceMeters > 0 ? distanceMeters / 1000 : null,
+    );
   }
 }
 

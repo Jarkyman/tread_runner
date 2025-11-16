@@ -15,12 +15,11 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
   WorkoutSummaryCubit({
     required WorkoutHistoryRepository historyRepository,
     required ProgramsRepository programsRepository,
-  }) : _historyRepository = historyRepository,
-       _programsRepository = programsRepository,
-       super(const WorkoutSummaryState()) {
-    _sessionSubscription = _historyRepository.watchSessions().listen(
-      _handleSessionStream,
-    );
+  })  : _historyRepository = historyRepository,
+        _programsRepository = programsRepository,
+        super(const WorkoutSummaryState()) {
+    _sessionSubscription =
+        _historyRepository.watchSessions().listen(_handleSessions);
   }
 
   final WorkoutHistoryRepository _historyRepository;
@@ -33,7 +32,10 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
       final session = await _historyRepository.getSession(id);
       if (session == null) {
         emit(
-          state.copyWith(isLoading: false, errorMessage: 'Workout not found.'),
+          state.copyWith(
+            isLoading: false,
+            errorMessage: 'Workout not found.',
+          ),
         );
         return;
       }
@@ -56,7 +58,10 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
     }
   }
 
-  Future<void> showSession(WorkoutSession session, {WorkoutPlan? plan}) async {
+  Future<void> showSession(
+    WorkoutSession session, {
+    WorkoutPlan? plan,
+  }) async {
     final resolvedPlan = plan ?? await _fetchPlan(session.planId);
     emit(
       state.copyWith(
@@ -83,16 +88,9 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
 
   void clear() => emit(const WorkoutSummaryState());
 
-  void _handleSessionStream(List<WorkoutSession> sessions) {
+  void _handleSessions(List<WorkoutSession> sessions) {
     if (sessions.isEmpty) {
-      emit(
-        state.copyWith(
-          recentSessions: const [],
-          session: null,
-          plan: null,
-          isLoading: false,
-        ),
-      );
+      emit(state.copyWith(recentSessions: const [], session: null, plan: null));
       return;
     }
     final current = state.session;
@@ -106,7 +104,6 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
       state.copyWith(
         recentSessions: sessions,
         session: nextSession,
-        isLoading: false,
       ),
     );
   }

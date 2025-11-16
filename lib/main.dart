@@ -129,6 +129,7 @@ Future<void> main() async {
               workoutHistoryRepository: context
                   .read<WorkoutHistoryRepository>(),
               treadmillService: context.read<TreadmillService>(),
+              analyticsService: context.read<AnalyticsService>(),
             ),
           ),
           BlocProvider<WorkoutSummaryCubit>(
@@ -191,6 +192,15 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
                   previous.status != current.status &&
                   current.status == TreadmillConnectionState.connected,
               listener: (context, state) {
+                final analytics = context.read<AnalyticsService>();
+                final vendor = state.activeDevice?.vendor;
+                final deviceName = state.activeDevice?.name;
+                final label = (vendor != null && vendor.isNotEmpty)
+                    ? vendor
+                    : (deviceName != null && deviceName.isNotEmpty
+                        ? deviceName
+                        : null);
+                unawaited(analytics.logDeviceConnected(vendor: label));
                 context
                     .read<HealthPermissionCubit>()
                     .requestIfNeededOnSync();

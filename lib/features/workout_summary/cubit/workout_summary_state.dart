@@ -34,10 +34,10 @@ class WorkoutSummaryState extends Equatable {
 
   @override
   List<Object?> get props => [
-    session,
-    plan,
-    recentSessions,
-    isLoading,
-    errorMessage,
-  ];
+        session,
+        plan,
+        recentSessions,
+        isLoading,
+        errorMessage,
+      ];
 }
