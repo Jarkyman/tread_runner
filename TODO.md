@@ -41,6 +41,8 @@
   - [ ] History list display program names/colors/icons
 - **Packages & Tooling**
   - [x] Update all packages (Flutter/Dart dependencies)
+- **Hardware bring-up**
+  - [ ] Pair and validate app functionality against TITAN LIFE S LINE 600 treadmill (device discovery, control, logging)
 
 ## Out of Scope (later)
 - [ ] Strava export

@@ -24,6 +24,19 @@ class FtmsTreadmillService implements TreadmillService {
   static final Uuid _featureCharacteristic = Uuid.parse(
     '00002ACC-0000-1000-8000-00805f9b34fb',
   );
+  static const int _flagAverageSpeed = 0x0002;
+  static const int _flagTotalDistance = 0x0004;
+  static const int _flagIncline = 0x0008;
+  static const int _flagElevationGain = 0x0010;
+  static const int _flagInstantaneousPace = 0x0020;
+  static const int _flagAveragePace = 0x0040;
+  static const int _flagEnergy = 0x0080;
+  static const int _flagHeartRate = 0x0100;
+  static const int _flagMetabolicEquivalent = 0x0200;
+  static const int _flagElapsedTime = 0x0400;
+  static const int _flagRemainingTime = 0x0800;
+  static const int _flagForceOnBelt = 0x1000;
+  static const int _flagPowerOutput = 0x2000;
 
   final FlutterReactiveBle _ble;
 
@@ -40,6 +53,7 @@ class FtmsTreadmillService implements TreadmillService {
   StreamSubscription<List<int>>? _metricsSubscription;
 
   QualifiedCharacteristic? _controlPointCharacteristicRef;
+  bool _hasControl = false;
 
   @override
   Stream<List<TreadmillDeviceInfo>> scan() {
@@ -195,6 +209,7 @@ class FtmsTreadmillService implements TreadmillService {
       characteristicId: _controlPointCharacteristic,
       deviceId: deviceId,
     );
+    unawaited(_requestControl());
     _resolveMetricsCharacteristic(deviceId)
         .then((characteristic) {
           if (characteristic == null) {
@@ -227,17 +242,91 @@ class FtmsTreadmillService implements TreadmillService {
   }
 
   TreadmillMetrics _parseMetrics(List<int> data) {
-    if (data.isEmpty) {
+    if (data.length < 4) {
       return TreadmillMetrics.zero;
     }
-    // TODO: Implement full FTMS treadmill data parsing. The current implementation
-    // emits placeholder values so that downstream widgets can render.
+
+    final bytes = data is Uint8List ? data : Uint8List.fromList(data);
+    final buffer = ByteData.sublistView(bytes);
+    var offset = 0;
+    final flags = buffer.getUint16(offset, Endian.little);
+    offset += 2;
+
+    double speedKmh = 0;
+    double inclinePercent = 0;
+    double distanceMeters = 0;
+    int heartRate = 0;
+    Duration elapsed = Duration.zero;
+
+    bool canRead(int count) => offset + count <= bytes.length;
+
+    if (!canRead(2)) return TreadmillMetrics.zero;
+    final rawSpeed = buffer.getUint16(offset, Endian.little);
+    offset += 2;
+    speedKmh = (rawSpeed / 100.0) * 3.6;
+
+    if ((flags & _flagAverageSpeed) != 0 && canRead(2)) {
+      offset += 2;
+    }
+
+    if ((flags & _flagTotalDistance) != 0 && canRead(3)) {
+      final rawDistance = bytes[offset] |
+          (bytes[offset + 1] << 8) |
+          (bytes[offset + 2] << 16);
+      distanceMeters = rawDistance / 10.0;
+      offset += 3;
+    }
+
+    if ((flags & _flagIncline) != 0 && canRead(4)) {
+      final rawIncline = buffer.getInt16(offset, Endian.little);
+      inclinePercent = rawIncline / 10.0;
+      offset += 4;
+    }
+
+    if ((flags & _flagElevationGain) != 0 && canRead(4)) {
+      offset += 4;
+    }
+    if ((flags & _flagInstantaneousPace) != 0 && canRead(2)) {
+      offset += 2;
+    }
+    if ((flags & _flagAveragePace) != 0 && canRead(2)) {
+      offset += 2;
+    }
+    if ((flags & _flagEnergy) != 0 && canRead(6)) {
+      offset += 6;
+    }
+
+    if ((flags & _flagHeartRate) != 0 && canRead(1)) {
+      heartRate = buffer.getUint8(offset);
+      offset += 1;
+    }
+
+    if ((flags & _flagMetabolicEquivalent) != 0 && canRead(1)) {
+      offset += 1;
+    }
+
+    if ((flags & _flagElapsedTime) != 0 && canRead(2)) {
+      final seconds = buffer.getUint16(offset, Endian.little);
+      elapsed = Duration(seconds: seconds);
+      offset += 2;
+    }
+
+    if ((flags & _flagRemainingTime) != 0 && canRead(2)) {
+      offset += 2;
+    }
+    if ((flags & _flagForceOnBelt) != 0 && canRead(2)) {
+      offset += 2;
+    }
+    if ((flags & _flagPowerOutput) != 0 && canRead(2)) {
+      offset += 2;
+    }
+
     return TreadmillMetrics(
-      elapsed: Duration(seconds: data.isNotEmpty ? data.first : 0),
-      speedKmh: 0,
-      inclinePercent: 0,
-      distanceMeters: 0,
-      heartRate: 0,
+      elapsed: elapsed,
+      speedKmh: speedKmh,
+      inclinePercent: inclinePercent,
+      distanceMeters: distanceMeters,
+      heartRate: heartRate,
     );
   }
 
@@ -245,6 +334,7 @@ class FtmsTreadmillService implements TreadmillService {
   Future<void> disconnect() async {
     await _connectionSubscription?.cancel();
     await _metricsSubscription?.cancel();
+    _hasControl = false;
     _connectionStateController.add(TreadmillConnectionState.disconnected);
   }
 
@@ -256,15 +346,25 @@ class FtmsTreadmillService implements TreadmillService {
   @override
   Future<void> setIncline(double valuePercent) async {
     if (_controlPointCharacteristicRef == null) return;
-    // TODO: Encode FTMS incline command.
-    log('FTMS set incline -> $valuePercent');
+    await _requestControl();
+    final clamped = valuePercent.clamp(-15, 15).toDouble();
+    final raw = (clamped * 10).round();
+    final payload = Uint8List(3)
+      ..[0] = 0x03
+      ..buffer.asByteData().setInt16(1, raw, Endian.little);
+    await _writeControlPoint(payload);
   }
 
   @override
   Future<void> setSpeed(double valueKmh) async {
     if (_controlPointCharacteristicRef == null) return;
-    // TODO: Encode FTMS speed command.
-    log('FTMS set speed -> $valueKmh');
+    await _requestControl();
+    final clamped = valueKmh.clamp(0, 25).toDouble();
+    final raw = ((clamped / 3.6) * 100).round();
+    final payload = Uint8List(3)
+      ..[0] = 0x02
+      ..buffer.asByteData().setUint16(1, raw, Endian.little);
+    await _writeControlPoint(payload);
   }
 
   @override
@@ -277,5 +377,24 @@ class FtmsTreadmillService implements TreadmillService {
       _connectionStateController.close(),
       _metricsController.close(),
     ]);
+  }
+
+  Future<void> _requestControl() async {
+    if (_controlPointCharacteristicRef == null || _hasControl) return;
+    try {
+      await _writeControlPoint(Uint8List.fromList([0x00]));
+      _hasControl = true;
+    } catch (error, stackTrace) {
+      log('FTMS request control failed: $error', stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> _writeControlPoint(Uint8List payload) async {
+    final characteristic = _controlPointCharacteristicRef;
+    if (characteristic == null) return;
+    await _ble.writeCharacteristicWithResponse(
+      characteristic,
+      value: payload,
+    );
   }
 }
