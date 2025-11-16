@@ -1,8 +1,10 @@
+import 'dart:math';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:isar/isar.dart';
 
-import '../../../data/programs/programs_repository.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_step.dart';
 
@@ -63,66 +65,106 @@ class CreateProgramState extends Equatable {
     required this.sections,
     required this.colorValue,
     required this.iconCodePoint,
+    this.planId,
     this.name = '',
     this.isSaving = false,
     this.errorMessage,
-    this.didSave = false,
   });
 
   final List<ProgramSection> sections;
   final int colorValue;
   final int iconCodePoint;
+  final Id? planId;
   final String name;
   final bool isSaving;
   final String? errorMessage;
-  final bool didSave;
 
   CreateProgramState copyWith({
     List<ProgramSection>? sections,
     int? colorValue,
     int? iconCodePoint,
+    Id? planId,
     String? name,
     bool? isSaving,
     String? errorMessage,
-    bool? didSave,
     bool clearError = false,
   }) {
     return CreateProgramState(
       sections: sections ?? this.sections,
       colorValue: colorValue ?? this.colorValue,
       iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      planId: planId ?? this.planId,
       name: name ?? this.name,
       isSaving: isSaving ?? this.isSaving,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      didSave: didSave ?? this.didSave,
     );
   }
 
   @override
-  List<Object?> get props =>
-      [
+  List<Object?> get props => [
         sections,
         colorValue,
         iconCodePoint,
+        planId,
         name,
         isSaving,
         errorMessage,
-        didSave,
       ];
 
-  static CreateProgramState initial() => CreateProgramState(
+  factory CreateProgramState.initial(
+    WorkoutPlan? initialPlan,
+  ) {
+    if (initialPlan == null) {
+      return CreateProgramState(
         sections: const [ProgramSection(id: 0)],
         colorValue: 0xFF34D399,
         iconCodePoint: Icons.directions_run.codePoint,
       );
+    }
+
+    final sections = <ProgramSection>[];
+    for (final entry in initialPlan.steps.asMap().entries) {
+      final step = entry.value;
+      sections.add(
+        ProgramSection(
+          id: entry.key,
+          speedKmh: step.targetSpeedKmh ?? 8,
+          inclinePercent: (step.inclinePercent ?? 1).round(),
+          goalType: step.distanceMeters != null
+              ? ProgramSectionGoalType.distance
+              : ProgramSectionGoalType.duration,
+          durationMinutes: step.durationSeconds != null
+              ? max(1, (step.durationSeconds! / 60).round())
+              : 5,
+          distanceMeters: step.distanceMeters != null
+              ? step.distanceMeters!.round()
+              : 1000,
+          repeatCount: step.repeatCount ?? 1,
+        ),
+      );
+    }
+
+    return CreateProgramState(
+      sections: sections.isEmpty ? const [ProgramSection(id: 0)] : sections,
+      colorValue: initialPlan.colorValue,
+      iconCodePoint: initialPlan.iconCodePoint,
+      name: initialPlan.name,
+      planId: initialPlan.id,
+    );
+  }
 }
 
 class CreateProgramCubit extends Cubit<CreateProgramState> {
-  CreateProgramCubit(this._programsRepository)
-      : super(CreateProgramState.initial());
+  CreateProgramCubit({WorkoutPlan? initialPlan})
+      : _nextId = _initialNextId(initialPlan),
+        super(CreateProgramState.initial(initialPlan));
 
-  final ProgramsRepository _programsRepository;
-  int _nextId = 1;
+  int _nextId;
+
+  static int _initialNextId(WorkoutPlan? plan) {
+    if (plan == null || plan.steps.isEmpty) return 1;
+    return plan.steps.length;
+  }
 
   void updateName(String value) {
     emit(state.copyWith(name: value, clearError: true));
@@ -221,65 +263,66 @@ class CreateProgramCubit extends Cubit<CreateProgramState> {
     emit(state.copyWith(sections: sections));
   }
 
-  Future<void> saveProgram() async {
+  WorkoutPlan? buildPlan(List<WorkoutPlan> existingPrograms) {
     final name = state.name.trim();
     if (name.isEmpty) {
-      emit(state.copyWith(errorMessage: 'Program name cannot be empty.'));
-      return;
+      emit(
+        state.copyWith(
+          errorMessage: 'Program name cannot be empty.',
+          isSaving: false,
+        ),
+      );
+      return null;
     }
     if (state.sections.isEmpty) {
-      emit(state.copyWith(errorMessage: 'Add at least one section.'));
-      return;
+      emit(
+        state.copyWith(
+          errorMessage: 'Add at least one section.',
+          isSaving: false,
+        ),
+      );
+      return null;
     }
 
     emit(state.copyWith(isSaving: true, clearError: true));
-    try {
-      final existing = await _programsRepository.getPrograms();
-      final nameExists = existing.any(
-        (plan) => plan.name.toLowerCase() == name.toLowerCase(),
-      );
-      if (nameExists) {
-        emit(
-          state.copyWith(
-            isSaving: false,
-            errorMessage: 'Program with this name already exists.',
-          ),
-        );
-        return;
-      }
-
-      final steps = <WorkoutStep>[];
-      for (final section in state.sections) {
-        steps.add(
-          WorkoutStep(
-            targetSpeedKmh: section.speedKmh,
-            inclinePercent: section.inclinePercent.toDouble(),
-            durationSeconds: section.goalType == ProgramSectionGoalType.duration
-                ? section.durationMinutes * 60
-                : null,
-            distanceMeters: section.goalType == ProgramSectionGoalType.distance
-                ? section.distanceMeters.toDouble()
-                : null,
-            repeatCount: section.repeatCount > 1 ? section.repeatCount : null,
-          ),
-        );
-      }
-
-      final plan = WorkoutPlan(
-        name: name,
-        colorValue: state.colorValue,
-        iconCodePoint: state.iconCodePoint,
-        initialSteps: steps,
-      );
-      await _programsRepository.saveProgram(plan);
-      emit(state.copyWith(isSaving: false, didSave: true));
-    } catch (_) {
+    final lowerName = name.toLowerCase();
+    final hasDuplicate = existingPrograms.any(
+      (plan) => plan.name.toLowerCase() == lowerName && plan.id != state.planId,
+    );
+    if (hasDuplicate) {
       emit(
         state.copyWith(
           isSaving: false,
-          errorMessage: 'Unable to save program.',
+          errorMessage: 'Program with this name already exists.',
+        ),
+      );
+      return null;
+    }
+
+    final steps = <WorkoutStep>[];
+    for (final section in state.sections) {
+      steps.add(
+        WorkoutStep(
+          targetSpeedKmh: section.speedKmh,
+          inclinePercent: section.inclinePercent.toDouble(),
+          durationSeconds: section.goalType == ProgramSectionGoalType.duration
+              ? section.durationMinutes * 60
+              : null,
+          distanceMeters: section.goalType == ProgramSectionGoalType.distance
+              ? section.distanceMeters.toDouble()
+              : null,
+          repeatCount: section.repeatCount > 1 ? section.repeatCount : null,
         ),
       );
     }
+
+    emit(state.copyWith(isSaving: false));
+    return WorkoutPlan(
+      id: state.planId ?? Isar.autoIncrement,
+      name: name,
+      colorValue: state.colorValue,
+      iconCodePoint: state.iconCodePoint,
+      initialSteps: steps,
+    );
   }
 }

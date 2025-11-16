@@ -4,31 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../data/programs/programs_repository.dart';
+import '../../../domain/models/workout_plan.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/duration_distance_toggle.dart';
 import '../../shared/widgets/metric_adjuster.dart';
 import '../../shared/widgets/value_wheel_picker.dart';
+import '../bloc/programs_bloc.dart';
 import '../create_program_cubit.dart';
 
 class CreateProgramScreen extends StatelessWidget {
-  const CreateProgramScreen({super.key});
+  const CreateProgramScreen({super.key, this.initialPlan});
 
   static const routeName = '/create-program';
+  final WorkoutPlan? initialPlan;
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = initialPlan != null;
     return BlocProvider(
-      create: (context) => CreateProgramCubit(
-        context.read<ProgramsRepository>(),
-      ),
-      child: const _CreateProgramView(),
+      create: (context) => CreateProgramCubit(initialPlan: initialPlan),
+      child: _CreateProgramView(isEditing: isEditing),
     );
   }
 }
 
 class _CreateProgramView extends StatelessWidget {
-  const _CreateProgramView();
+  const _CreateProgramView({required this.isEditing});
+
+  final bool isEditing;
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +43,6 @@ class _CreateProgramView extends StatelessWidget {
             SnackBar(content: Text(error)),
           );
         }
-        if (state.didSave) {
-          Navigator.of(context).pop();
-        }
       },
       builder: (context, state) {
         return Scaffold(
@@ -53,9 +53,9 @@ class _CreateProgramView extends StatelessWidget {
               icon: const Icon(Icons.close, color: Colors.white70),
               onPressed: () => Navigator.of(context).pop(),
             ),
-            title: const Text(
-              'Create Program',
-              style: TextStyle(
+            title: Text(
+              isEditing ? 'Edit Program' : 'Create Program',
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),
@@ -65,16 +65,24 @@ class _CreateProgramView extends StatelessWidget {
               TextButton(
                 onPressed: state.isSaving
                     ? null
-                    : () => context.read<CreateProgramCubit>().saveProgram(),
+                    : () {
+                        final cubit = context.read<CreateProgramCubit>();
+                        final programs =
+                            context.read<ProgramsBloc>().state.programs;
+                        final plan = cubit.buildPlan(programs);
+                        if (plan == null) return;
+                        context.read<ProgramsBloc>().add(ProgramSaved(plan));
+                        Navigator.of(context).pop();
+                      },
                 child: state.isSaving
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text(
-                        'Save',
-                        style: TextStyle(
+                    : Text(
+                        isEditing ? 'Update' : 'Save',
+                        style: const TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
                         ),

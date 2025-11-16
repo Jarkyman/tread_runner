@@ -5,6 +5,7 @@ import '../../../core/analytics/analytics_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_session.dart';
+import '../../../domain/models/workout_step.dart';
 import '../../dashboard/cubit/dashboard_cubit.dart';
 import '../../pre_workout/presentation/pre_workout_screen.dart';
 import '../../programs/bloc/programs_bloc.dart';
@@ -183,28 +184,131 @@ class _ProgramCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.topRight,
-            child: Icon(iconData, color: Colors.white70),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(iconData, color: Colors.white70),
+              PopupMenuButton<_ProgramMenuAction>(
+                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                color: AppColors.secondary,
+                onSelected: (action) => _handleAction(context, action),
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _ProgramMenuAction.edit,
+                    child: Text('Edit program'),
+                  ),
+                  PopupMenuItem(
+                    value: _ProgramMenuAction.duplicate,
+                    child: Text('Duplicate'),
+                  ),
+                  PopupMenuItem(
+                    value: _ProgramMenuAction.delete,
+                    child: Text('Delete'),
+                  ),
+                ],
+              ),
+            ],
           ),
+          const SizedBox(height: 8),
           Text(
             plan.name,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.white),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                ),
           ),
           const Spacer(),
           Text(
             '${plan.steps.length} steps',
-            style: Theme.of(
-              context,
-            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white70,
+                ),
           ),
         ],
       ),
     );
   }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    _ProgramMenuAction action,
+  ) async {
+    switch (action) {
+      case _ProgramMenuAction.edit:
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CreateProgramScreen(initialPlan: plan),
+          ),
+        );
+        break;
+      case _ProgramMenuAction.duplicate:
+        _duplicatePlan(context);
+        break;
+      case _ProgramMenuAction.delete:
+        final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (dialogContext) {
+                return AlertDialog(
+                  title: const Text('Delete program?'),
+                  content: Text(
+                    'This will remove ${plan.name} and its steps.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                );
+              },
+            ) ??
+            false;
+        if (!confirmed || !context.mounted) return;
+        context.read<ProgramsBloc>().add(ProgramDeleted(plan.id));
+        break;
+    }
+  }
+
+  void _duplicatePlan(BuildContext context) {
+    final bloc = context.read<ProgramsBloc>();
+    final existing = bloc.state.programs.map((p) => p.name).toList();
+    var candidate = '${plan.name} Copy';
+    var suffix = 2;
+    while (existing.contains(candidate)) {
+      candidate = '${plan.name} Copy ${suffix++}';
+    }
+    final clone = WorkoutPlan(
+      name: candidate,
+      colorValue: plan.colorValue,
+      iconCodePoint: plan.iconCodePoint,
+      initialSteps: _cloneSteps(plan.steps),
+    );
+    bloc.add(ProgramSaved(clone));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Duplicated "${plan.name}"')),
+    );
+  }
+
+  List<WorkoutStep> _cloneSteps(List<WorkoutStep> steps) {
+    return steps
+        .map(
+          (step) => WorkoutStep(
+            type: step.type,
+            durationSeconds: step.durationSeconds,
+            distanceMeters: step.distanceMeters,
+            targetSpeedKmh: step.targetSpeedKmh,
+            inclinePercent: step.inclinePercent,
+            repeatCount: step.repeatCount,
+          ),
+        )
+        .toList();
+  }
 }
+
+enum _ProgramMenuAction { edit, duplicate, delete }
 
 class _AddProgramCard extends StatelessWidget {
   const _AddProgramCard();
