@@ -7,11 +7,12 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'core/analytics/analytics_consent_cubit.dart';
 import 'core/analytics/analytics_service.dart';
 import 'core/app/app_status_cubit.dart';
-import 'core/ble/connection_cubit.dart';
+import 'core/ble/connection_cubit.dart' as connection;
 import 'core/ble/ftms_treadmill_service.dart';
 import 'core/ble/mock_treadmill_service.dart';
 import 'core/ble/treadmill_service.dart';
 import 'core/database/app_database.dart';
+import 'core/health/health_permission_cubit.dart';
 import 'core/health/health_service.dart';
 import 'core/permissions/ble_permission_handler.dart';
 import 'core/preferences/user_preferences_repository.dart';
@@ -90,15 +91,22 @@ Future<void> main() async {
           BlocProvider<AnalyticsConsentCubit>.value(
             value: analyticsConsentCubit,
           ),
-          BlocProvider<ConnectionCubit>(
-            create: (context) => ConnectionCubit(
+          BlocProvider<connection.ConnectionCubit>(
+            create: (context) => connection.ConnectionCubit(
               context.read<TreadmillService>(),
               context.read<BlePermissionHandler>(),
             ),
           ),
           BlocProvider<AppStatusCubit>(
             create: (context) => AppStatusCubit(
-              connectionCubit: context.read<ConnectionCubit>(),
+              connectionCubit: context.read<connection.ConnectionCubit>(),
+              isMockMode: useMockTreadmillService,
+            ),
+          ),
+          BlocProvider<HealthPermissionCubit>(
+            create: (context) => HealthPermissionCubit(
+              healthService: context.read<HealthService>(),
+              preferencesRepository: context.read<UserPreferencesRepository>(),
               isMockMode: useMockTreadmillService,
             ),
           ),
@@ -159,23 +167,37 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
         useMaterial3: true,
       ),
       builder: (context, child) {
-        return BlocListener<AppStatusCubit, AppStatusState>(
-          listenWhen: (previous, current) =>
-              previous.toastId != current.toastId &&
-              current.toastMessage != null,
-          listener: (context, state) {
-            final message = state.toastMessage;
-            if (message == null) return;
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(
-                SnackBar(
-                  content: Text(message),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-          },
-          child: child,
+        return MultiBlocListener(
+          listeners: [
+            BlocListener<AppStatusCubit, AppStatusState>(
+              listenWhen: (previous, current) =>
+                  previous.toastId != current.toastId &&
+                  current.toastMessage != null,
+              listener: (context, state) {
+                final message = state.toastMessage;
+                if (message == null) return;
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Text(message),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+              },
+            ),
+            BlocListener<connection.ConnectionCubit, connection.ConnectionState>(
+              listenWhen: (previous, current) =>
+                  previous.status != current.status &&
+                  current.status == TreadmillConnectionState.connected,
+              listener: (context, state) {
+                context
+                    .read<HealthPermissionCubit>()
+                    .requestIfNeededOnSync();
+              },
+            ),
+          ],
+          child: child ?? const SizedBox.shrink(),
         );
       },
       routes: {

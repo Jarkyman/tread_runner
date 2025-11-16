@@ -10,6 +10,7 @@ import '../../../domain/models/workout_plan.dart';
 import '../../shared/widgets/app_card.dart';
 import '../../shared/widgets/connection_status_badge.dart';
 import '../../shared/widgets/duration_distance_toggle.dart';
+import '../../shared/widgets/health_permission_banner.dart';
 import '../../shared/widgets/metric_adjuster.dart';
 import '../../shared/widgets/value_wheel_picker.dart';
 import '../../workout/bloc/workout_bloc.dart';
@@ -87,6 +88,7 @@ class _PreWorkoutBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const HealthPermissionBanner(),
               _ProgramHeader(state: state),
               const SizedBox(height: 24),
               if (allowsAdjustments) ...[

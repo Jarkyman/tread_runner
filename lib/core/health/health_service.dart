@@ -9,6 +9,8 @@ abstract class HealthService {
   Future<bool> writeWorkout(WorkoutSession session);
 
   Future<int?> readLatestHeartRate();
+
+  bool get supportsPermissions;
 }
 
 class HealthServiceFactory {
@@ -80,6 +82,9 @@ class MethodChannelHealthService implements HealthService {
       return null;
     }
   }
+
+  @override
+  bool get supportsPermissions => true;
 }
 
 class _NoopHealthService implements HealthService {
@@ -93,4 +98,7 @@ class _NoopHealthService implements HealthService {
 
   @override
   Future<bool> writeWorkout(WorkoutSession session) async => false;
+
+  @override
+  bool get supportsPermissions => false;
 }

@@ -25,8 +25,8 @@
   - [x] WorkoutBloc step progression, repeat blocks, treadmill commands
   - [ ] WorkoutSummaryCubit history integrations (future features)
 - **Permissions Flow**
-  - [ ] Request health permissions on first sync
-  - [ ] Show fallbacks when denied
+  - [x] Request health permissions on first sync
+  - [x] Show fallbacks when denied
 - **Testing / QA**
   - [ ] Add unit tests for workout step progression
   - [ ] Add unit tests for repeat blocks
