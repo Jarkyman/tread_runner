@@ -8,21 +8,38 @@ import 'treadmill_service.dart';
 
 class ConnectionCubit extends Cubit<ConnectionState> {
   ConnectionCubit(this._treadmillService, this._permissionHandler)
-      : super(const ConnectionState.initial()) {
+    : super(const ConnectionState.initial()) {
     _connectionSubscription = _treadmillService.connectionState().listen(
       (status) {
         if (status != TreadmillConnectionState.connecting) {
           _connectionTimeoutTimer?.cancel();
         }
+        final isConnected = status == TreadmillConnectionState.connected;
+        final shouldResetActiveDevice =
+            status == TreadmillConnectionState.disconnected ||
+            status == TreadmillConnectionState.error;
         emit(
           state.copyWith(
             status: status,
-            connectedDeviceId: status == TreadmillConnectionState.connected
-                ? state.connectedDeviceId
+            connectedDeviceId: isConnected
+                ? state.connectedDeviceId ?? _pendingDevice?.id
                 : null,
+            activeDevice: isConnected
+                ? state.activeDevice ?? _pendingDevice
+                : null,
+            lastKnownDevice: isConnected
+                ? state.activeDevice ?? _pendingDevice
+                : state.lastKnownDevice,
             isScanning: status == TreadmillConnectionState.scanning,
+            lastStatusChangeAt: DateTime.now(),
+            resetActiveDevice: shouldResetActiveDevice,
           ),
         );
+        if (!isConnected &&
+            status != TreadmillConnectionState.connecting &&
+            status != TreadmillConnectionState.scanning) {
+          _pendingDevice = null;
+        }
         if (status == TreadmillConnectionState.connected) {
           _resumeScanAfterConnectAttempt = false;
         } else if ((status == TreadmillConnectionState.disconnected ||
@@ -49,6 +66,7 @@ class ConnectionCubit extends Cubit<ConnectionState> {
   StreamSubscription<TreadmillConnectionState>? _connectionSubscription;
   Timer? _connectionTimeoutTimer;
   bool _resumeScanAfterConnectAttempt = false;
+  TreadmillDeviceInfo? _pendingDevice;
   static const Duration _connectionTimeout = Duration(seconds: 30);
 
   Future<bool> startScan() async {
@@ -72,12 +90,19 @@ class ConnectionCubit extends Cubit<ConnectionState> {
         isScanning: true,
         devices: const [],
         permissionStatus: permissionStatus,
+        lastScanStartedAt: DateTime.now(),
       ),
     );
     await _scanSubscription?.cancel();
     _scanSubscription = _treadmillService.scan().listen(
       (devices) {
-        emit(state.copyWith(devices: devices, isScanning: false));
+        emit(
+          state.copyWith(
+            devices: devices,
+            isScanning: false,
+            lastStatusChangeAt: DateTime.now(),
+          ),
+        );
       },
       onError: (error) {
         emit(
@@ -92,7 +117,7 @@ class ConnectionCubit extends Cubit<ConnectionState> {
     return true;
   }
 
-  Future<void> connectToDevice(String deviceId) async {
+  Future<void> connectToDevice(TreadmillDeviceInfo device) async {
     emit(state.copyWith(clearError: true));
     final permissionStatus = await _permissionHandler.ensurePermissions();
     if (permissionStatus != BlePermissionStatus.granted) {
@@ -108,12 +133,16 @@ class ConnectionCubit extends Cubit<ConnectionState> {
       return;
     }
 
+    _pendingDevice = device;
     emit(
       state.copyWith(
-        connectedDeviceId: deviceId,
+        connectedDeviceId: device.id,
+        activeDevice: device,
+        lastKnownDevice: device,
         status: TreadmillConnectionState.connecting,
         clearError: true,
         permissionStatus: permissionStatus,
+        lastStatusChangeAt: DateTime.now(),
       ),
     );
     _resumeScanAfterConnectAttempt = true;
@@ -131,7 +160,7 @@ class ConnectionCubit extends Cubit<ConnectionState> {
       }
     });
     try {
-      await _treadmillService.connect(deviceId);
+      await _treadmillService.connect(device.id);
     } catch (_) {
       if (_resumeScanAfterConnectAttempt) {
         _resumeScanAfterConnectAttempt = false;
@@ -150,11 +179,14 @@ class ConnectionCubit extends Cubit<ConnectionState> {
     try {
       await _treadmillService.disconnect();
       _resumeScanAfterConnectAttempt = false;
+      _pendingDevice = null;
       emit(
         state.copyWith(
           status: TreadmillConnectionState.disconnected,
           connectedDeviceId: null,
           clearError: true,
+          lastStatusChangeAt: DateTime.now(),
+          resetActiveDevice: true,
         ),
       );
     } catch (_) {
@@ -189,6 +221,10 @@ class ConnectionState extends Equatable {
     required this.connectedDeviceId,
     required this.errorMessage,
     required this.permissionStatus,
+    this.activeDevice,
+    this.lastKnownDevice,
+    this.lastScanStartedAt,
+    this.lastStatusChangeAt,
   });
 
   const ConnectionState.initial()
@@ -199,6 +235,10 @@ class ConnectionState extends Equatable {
         connectedDeviceId: null,
         errorMessage: null,
         permissionStatus: BlePermissionStatus.unknown,
+        activeDevice: null,
+        lastKnownDevice: null,
+        lastScanStartedAt: null,
+        lastStatusChangeAt: null,
       );
 
   final TreadmillConnectionState status;
@@ -207,6 +247,10 @@ class ConnectionState extends Equatable {
   final String? connectedDeviceId;
   final String? errorMessage;
   final BlePermissionStatus permissionStatus;
+  final TreadmillDeviceInfo? activeDevice;
+  final TreadmillDeviceInfo? lastKnownDevice;
+  final DateTime? lastScanStartedAt;
+  final DateTime? lastStatusChangeAt;
 
   ConnectionState copyWith({
     TreadmillConnectionState? status,
@@ -215,6 +259,12 @@ class ConnectionState extends Equatable {
     String? connectedDeviceId,
     String? errorMessage,
     BlePermissionStatus? permissionStatus,
+    TreadmillDeviceInfo? activeDevice,
+    bool resetActiveDevice = false,
+    TreadmillDeviceInfo? lastKnownDevice,
+    bool resetLastKnownDevice = false,
+    DateTime? lastScanStartedAt,
+    DateTime? lastStatusChangeAt,
     bool clearError = false,
   }) {
     return ConnectionState(
@@ -224,6 +274,14 @@ class ConnectionState extends Equatable {
       connectedDeviceId: connectedDeviceId ?? this.connectedDeviceId,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       permissionStatus: permissionStatus ?? this.permissionStatus,
+      activeDevice: resetActiveDevice
+          ? null
+          : (activeDevice ?? this.activeDevice),
+      lastKnownDevice: resetLastKnownDevice
+          ? null
+          : (lastKnownDevice ?? this.lastKnownDevice),
+      lastScanStartedAt: lastScanStartedAt ?? this.lastScanStartedAt,
+      lastStatusChangeAt: lastStatusChangeAt ?? this.lastStatusChangeAt,
     );
   }
 
@@ -235,5 +293,9 @@ class ConnectionState extends Equatable {
     connectedDeviceId,
     errorMessage,
     permissionStatus,
+    activeDevice,
+    lastKnownDevice,
+    lastScanStartedAt,
+    lastStatusChangeAt,
   ];
 }

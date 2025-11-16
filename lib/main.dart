@@ -6,6 +6,7 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 import 'core/analytics/analytics_consent_cubit.dart';
 import 'core/analytics/analytics_service.dart';
+import 'core/app/app_status_cubit.dart';
 import 'core/ble/connection_cubit.dart';
 import 'core/ble/ftms_treadmill_service.dart';
 import 'core/ble/mock_treadmill_service.dart';
@@ -95,6 +96,12 @@ Future<void> main() async {
               context.read<BlePermissionHandler>(),
             ),
           ),
+          BlocProvider<AppStatusCubit>(
+            create: (context) => AppStatusCubit(
+              connectionCubit: context.read<ConnectionCubit>(),
+              isMockMode: useMockTreadmillService,
+            ),
+          ),
           BlocProvider<ProgramsBloc>(
             create: (context) =>
                 ProgramsBloc(context.read<ProgramsRepository>())
@@ -151,6 +158,26 @@ class _TreadRunnerAppState extends State<TreadRunnerApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orangeAccent),
         useMaterial3: true,
       ),
+      builder: (context, child) {
+        return BlocListener<AppStatusCubit, AppStatusState>(
+          listenWhen: (previous, current) =>
+              previous.toastId != current.toastId &&
+              current.toastMessage != null,
+          listener: (context, state) {
+            final message = state.toastMessage;
+            if (message == null) return;
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(message),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+          },
+          child: child,
+        );
+      },
       routes: {
         DashboardScreen.routeName: (_) => const DashboardScreen(),
         SettingsScreen.routeName: (_) => const SettingsScreen(),

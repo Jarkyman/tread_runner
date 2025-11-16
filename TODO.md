@@ -17,10 +17,10 @@
 - **Recent Polish**
   - [x] Pre-workout goal handling widgets aligned with create program
   - [x] Shared widget kit for toggles, pickers, and cards
+  - [x] AppStatusCubit + connection telemetry surfaced globally
 
 ## MVP (to ship)
 - **App State & Blocs**
-  - [ ] Global AppBloc / ConnectionCubit enhancements
   - [ ] ProgramsBloc for CRUD (beyond create)
   - [ ] WorkoutBloc step progression, repeat blocks, treadmill commands (partially done)
   - [ ] WorkoutSummaryCubit history integrations (future features)

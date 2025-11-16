@@ -484,7 +484,7 @@ class _AvailableDeviceTile extends StatelessWidget {
                   ? null
                   : () => context
                         .read<connection.ConnectionCubit>()
-                        .connectToDevice(device.id),
+                        .connectToDevice(device),
               child: isConnecting
                   ? const SizedBox(
                       width: 16,
