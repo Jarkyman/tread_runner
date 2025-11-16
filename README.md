@@ -28,6 +28,7 @@ flutter run --dart-define USE_MOCK_TREADMILL=true
 - BLE permissions are skipped and the mock broadcasts a fake FTMS device.
 - Preloaded demo workouts sync instantly so you can test dashboards + summaries.
 - Set `--dart-define USE_REAL_TREADMILL=true` if you ever need to override and force the real BLE service even when another flag is on.
+- You can also toggle mock mode from Settings → Developer without rebuilding; restart the app after flipping the switch.
 
 ## Analytics debugging
 Firebase Analytics runs through `AnalyticsService`. To check events:

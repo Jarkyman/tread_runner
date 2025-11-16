@@ -42,11 +42,13 @@ const bool _forceRealTreadmillService = bool.fromEnvironment(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final useMockTreadmillService = _forceRealTreadmillService
-      ? false
-      : _forceMockTreadmillService;
   final preferencesRepository =
       await SharedPreferencesUserPreferencesRepository.create();
+  final storedMockPreference =
+      await preferencesRepository.getUseMockTreadmill();
+  final useMockTreadmillService = _forceRealTreadmillService
+      ? false
+      : (_forceMockTreadmillService || storedMockPreference);
   final initialConsent = await preferencesRepository.getShareUsageData();
   final analyticsService = await AnalyticsServiceFactory.create(initialConsent);
   final database = await AppDatabase.open();

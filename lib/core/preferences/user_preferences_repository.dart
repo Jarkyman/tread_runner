@@ -18,6 +18,10 @@ abstract class UserPreferencesRepository {
   Future<bool> getHealthPermissionsGranted();
 
   Future<void> setHealthPermissionsGranted(bool granted);
+
+  Future<bool> getUseMockTreadmill();
+
+  Future<void> setUseMockTreadmill(bool value);
 }
 
 class SharedPreferencesUserPreferencesRepository
@@ -30,6 +34,7 @@ class SharedPreferencesUserPreferencesRepository
       'health_permissions_requested';
   static const _healthPermissionsGrantedKey =
       'health_permissions_granted';
+  static const _useMockTreadmillKey = 'use_mock_treadmill';
   final SharedPreferences _preferences;
 
   static Future<SharedPreferencesUserPreferencesRepository> create() async {
@@ -76,5 +81,15 @@ class SharedPreferencesUserPreferencesRepository
   @override
   Future<void> setHealthPermissionsGranted(bool granted) async {
     await _preferences.setBool(_healthPermissionsGrantedKey, granted);
+  }
+
+  @override
+  Future<bool> getUseMockTreadmill() async {
+    return _preferences.getBool(_useMockTreadmillKey) ?? false;
+  }
+
+  @override
+  Future<void> setUseMockTreadmill(bool value) async {
+    await _preferences.setBool(_useMockTreadmillKey, value);
   }
 }

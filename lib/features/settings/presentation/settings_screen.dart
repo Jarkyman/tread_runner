@@ -27,11 +27,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final bool _audioCues = false;
   UnitsPreference _unitsPreference = UnitsPreference.metric;
   bool _isUnitsLoading = true;
+  bool _useMockTreadmill = false;
+  bool _isMockPreferenceLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadUnitsPreference();
+    _loadMockPreference();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<AnalyticsService>().logScreenView('settings');
@@ -46,6 +49,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _unitsPreference = storedPreference;
       _isUnitsLoading = false;
+    });
+  }
+
+  Future<void> _loadMockPreference() async {
+    final value =
+        await context.read<UserPreferencesRepository>().getUseMockTreadmill();
+    if (!mounted) return;
+    setState(() {
+      _useMockTreadmill = value;
+      _isMockPreferenceLoading = false;
     });
   }
 
@@ -127,6 +140,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: _SupportCard(),
                 ),
                 const SizedBox(height: 32),
+                _SectionCard(
+                  title: 'Developer',
+                  icon: Icons.science_outlined,
+                  child: _DeveloperSettingsCard(
+                    isLoading: _isMockPreferenceLoading,
+                    useMockTreadmill: _useMockTreadmill,
+                    onMockChanged: _handleMockPreferenceChanged,
+                  ),
+                ),
+                const SizedBox(height: 32),
                 _AppVersionFooter(),
               ],
             ),
@@ -161,6 +184,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       case BlePermissionStatus.unknown:
         return 'Unable to start scan. Please try again.';
     }
+  }
+
+  Future<void> _handleMockPreferenceChanged(bool value) async {
+    setState(() {
+      _useMockTreadmill = value;
+    });
+    await context.read<UserPreferencesRepository>().setUseMockTreadmill(value);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          value
+              ? 'Mock treadmill enabled. Restart the app to switch.'
+              : 'Real treadmill mode enabled. Restart the app to switch.',
+        ),
+      ),
+    );
   }
 }
 
@@ -877,6 +917,44 @@ class _SupportCard extends StatelessWidget {
               const SnackBar(content: Text('Privacy policy link coming soon.')),
             );
           },
+        ),
+      ],
+    );
+  }
+}
+
+class _DeveloperSettingsCard extends StatelessWidget {
+  const _DeveloperSettingsCard({
+    required this.isLoading,
+    required this.useMockTreadmill,
+    required this.onMockChanged,
+  });
+
+  final bool isLoading;
+  final bool useMockTreadmill;
+  final ValueChanged<bool> onMockChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            'Use mock treadmill',
+            style: TextStyle(color: Colors.white),
+          ),
+          subtitle: const Text(
+            'Enable mock BLE device for testing.',
+            style: TextStyle(color: Colors.white54),
+          ),
+          value: useMockTreadmill,
+          onChanged: isLoading ? null : onMockChanged,
+        ),
+        const Text(
+          'Requires app restart to fully switch BLE stacks.',
+          style: TextStyle(color: Colors.white38, fontSize: 12),
         ),
       ],
     );
