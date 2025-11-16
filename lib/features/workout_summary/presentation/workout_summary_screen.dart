@@ -139,6 +139,7 @@ class _WorkoutSummaryScreenState extends State<WorkoutSummaryScreen> {
                         noteController: _noteController,
                         noteFocusNode: _noteFocus,
                         onNoteChanged: _handleNoteChanged,
+                        recentSessions: state.recentSessions,
                       ),
                     ),
                   ),
@@ -185,9 +186,9 @@ class _SummaryHero extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
+        colors: [
             AppColors.primary,
-            AppColors.primary.withAlpha(80),
+            AppColors.primary.withValues(alpha: 0.31),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -226,6 +227,7 @@ class _SummaryBody extends StatelessWidget {
     required this.noteController,
     required this.noteFocusNode,
     required this.onNoteChanged,
+    required this.recentSessions,
   });
 
   final WorkoutSession session;
@@ -234,6 +236,7 @@ class _SummaryBody extends StatelessWidget {
   final TextEditingController noteController;
   final FocusNode noteFocusNode;
   final ValueChanged<String> onNoteChanged;
+  final List<WorkoutSession> recentSessions;
 
   @override
   Widget build(BuildContext context) {
@@ -288,6 +291,13 @@ class _SummaryBody extends StatelessWidget {
           session: session,
           plan: plan,
         ),
+        if (_otherSessions.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _RecentSessionsList(
+            currentSessionId: session.id,
+            sessions: _otherSessions,
+          ),
+        ],
       ],
     );
   }
@@ -295,6 +305,65 @@ class _SummaryBody extends StatelessWidget {
   double _estimateCalories(double distanceMeters) {
     final distanceKm = distanceMeters / 1000;
     return (distanceKm * 60).clamp(0, 9999);
+  }
+
+  List<WorkoutSession> get _otherSessions =>
+      recentSessions.where((it) => it.id != session.id).toList();
+}
+
+class _RecentSessionsList extends StatelessWidget {
+  const _RecentSessionsList({
+    required this.currentSessionId,
+    required this.sessions,
+  });
+
+  final int currentSessionId;
+  final List<WorkoutSession> sessions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Recent workouts',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...sessions.map(
+          (session) => InkWell(
+            onTap: () => context.read<WorkoutSummaryCubit>().showSession(session),
+            borderRadius: BorderRadius.circular(18),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 6),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(
+                  alpha: session.id == currentSessionId ? 0.2 : 0.08,
+                ),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.history, color: Colors.white70),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      DateFormat.yMMMd().add_jm().format(session.startedAt),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

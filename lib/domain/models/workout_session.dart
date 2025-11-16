@@ -29,4 +29,24 @@ class WorkoutSession {
   List<WorkoutMetricSample> metrics;
 
   String? note;
+
+  WorkoutSession copyWith({
+    Id? id,
+    int? planId,
+    DateTime? startedAt,
+    DateTime? endedAt,
+    String? deviceId,
+    List<WorkoutMetricSample>? metrics,
+    String? note,
+  }) {
+    return WorkoutSession(
+      id: id ?? this.id,
+      planId: planId ?? this.planId,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      deviceId: deviceId ?? this.deviceId,
+      samples: metrics ?? this.metrics,
+      note: note ?? this.note,
+    );
+  }
 }

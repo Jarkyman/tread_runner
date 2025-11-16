@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:isar/isar.dart';
@@ -7,48 +9,23 @@ import '../../../data/workout_history/workout_history_repository.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_session.dart';
 
-class WorkoutSummaryState extends Equatable {
-  const WorkoutSummaryState({
-    this.session,
-    this.plan,
-    this.isLoading = false,
-    this.errorMessage,
-  });
-
-  final WorkoutSession? session;
-  final WorkoutPlan? plan;
-  final bool isLoading;
-  final String? errorMessage;
-
-  WorkoutSummaryState copyWith({
-    WorkoutSession? session,
-    WorkoutPlan? plan,
-    bool? isLoading,
-    String? errorMessage,
-    bool clearError = false,
-  }) {
-    return WorkoutSummaryState(
-      session: session ?? this.session,
-      plan: plan ?? this.plan,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-    );
-  }
-
-  @override
-  List<Object?> get props => [session, plan, isLoading, errorMessage];
-}
+part 'workout_summary_state.dart';
 
 class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
   WorkoutSummaryCubit({
     required WorkoutHistoryRepository historyRepository,
     required ProgramsRepository programsRepository,
-  })  : _historyRepository = historyRepository,
-        _programsRepository = programsRepository,
-        super(const WorkoutSummaryState());
+  }) : _historyRepository = historyRepository,
+       _programsRepository = programsRepository,
+       super(const WorkoutSummaryState()) {
+    _sessionSubscription = _historyRepository.watchSessions().listen(
+      _handleSessionStream,
+    );
+  }
 
   final WorkoutHistoryRepository _historyRepository;
   final ProgramsRepository _programsRepository;
+  StreamSubscription<List<WorkoutSession>>? _sessionSubscription;
 
   Future<void> loadSession(Id id) async {
     emit(state.copyWith(isLoading: true, clearError: true));
@@ -56,10 +33,7 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
       final session = await _historyRepository.getSession(id);
       if (session == null) {
         emit(
-          state.copyWith(
-            isLoading: false,
-            errorMessage: 'Workout not found.',
-          ),
+          state.copyWith(isLoading: false, errorMessage: 'Workout not found.'),
         );
         return;
       }
@@ -82,12 +56,8 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
     }
   }
 
-  Future<void> showSession(
-    WorkoutSession session, {
-    WorkoutPlan? plan,
-  }) async {
-    final resolvedPlan =
-        plan ?? await _fetchPlan(session.planId);
+  Future<void> showSession(WorkoutSession session, {WorkoutPlan? plan}) async {
+    final resolvedPlan = plan ?? await _fetchPlan(session.planId);
     emit(
       state.copyWith(
         session: session,
@@ -101,15 +71,7 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
   Future<void> updateNote(String note) async {
     final session = state.session;
     if (session == null) return;
-    final updated = WorkoutSession(
-      id: session.id,
-      planId: session.planId,
-      startedAt: session.startedAt,
-      endedAt: session.endedAt,
-      deviceId: session.deviceId,
-      samples: List.of(session.metrics),
-      note: note,
-    );
+    final updated = session.copyWith(note: note);
     await _historyRepository.saveSession(updated);
     emit(state.copyWith(session: updated));
   }
@@ -120,4 +82,38 @@ class WorkoutSummaryCubit extends Cubit<WorkoutSummaryState> {
   }
 
   void clear() => emit(const WorkoutSummaryState());
+
+  void _handleSessionStream(List<WorkoutSession> sessions) {
+    if (sessions.isEmpty) {
+      emit(
+        state.copyWith(
+          recentSessions: const [],
+          session: null,
+          plan: null,
+          isLoading: false,
+        ),
+      );
+      return;
+    }
+    final current = state.session;
+    final nextSession = current != null
+        ? sessions.firstWhere(
+            (it) => it.id == current.id,
+            orElse: () => sessions.first,
+          )
+        : sessions.first;
+    emit(
+      state.copyWith(
+        recentSessions: sessions,
+        session: nextSession,
+        isLoading: false,
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() async {
+    await _sessionSubscription?.cancel();
+    return super.close();
+  }
 }
