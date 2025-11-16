@@ -39,10 +39,7 @@ class FtmsTreadmillService implements TreadmillService {
   StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
   StreamSubscription<List<int>>? _metricsSubscription;
 
-  QualifiedCharacteristic? _metricsCharacteristic;
   QualifiedCharacteristic? _controlPointCharacteristicRef;
-  QualifiedCharacteristic? _featureCharacteristicRef;
-  bool _usingIndoorBikeDataFallback = false;
 
   @override
   Stream<List<TreadmillDeviceInfo>> scan() {
@@ -81,20 +78,20 @@ class FtmsTreadmillService implements TreadmillService {
     String deviceId,
   ) async {
     try {
-      final services = await _ble.discoverServices(deviceId);
+      await _ble.discoverAllServices(deviceId);
+      final services = await _ble.getDiscoveredServices(deviceId);
       final ftmsService = services.firstWhere(
-        (service) => service.serviceId == _ftmsServiceUuid,
+        (service) => service.id == _ftmsServiceUuid,
         orElse: () => throw StateError('FTMS service not found on device'),
       );
-      final hasTreadmillData = ftmsService.characteristicIds.contains(
-        _treadmillDataCharacteristic,
+      final hasTreadmillData = ftmsService.characteristics.any(
+        (char) => char.id == _treadmillDataCharacteristic,
       );
-      final hasBikeData = ftmsService.characteristicIds.contains(
-        _indoorBikeDataCharacteristic,
+      final hasBikeData = ftmsService.characteristics.any(
+        (char) => char.id == _indoorBikeDataCharacteristic,
       );
 
       if (hasTreadmillData) {
-        _usingIndoorBikeDataFallback = false;
         return QualifiedCharacteristic(
           serviceId: _ftmsServiceUuid,
           characteristicId: _treadmillDataCharacteristic,
@@ -103,7 +100,6 @@ class FtmsTreadmillService implements TreadmillService {
       }
 
       if (hasBikeData) {
-        _usingIndoorBikeDataFallback = true;
         log(
           'Treadmill data characteristic missing. Using Indoor Bike Data (0x2AD2) as fallback.',
         );
@@ -199,19 +195,12 @@ class FtmsTreadmillService implements TreadmillService {
       characteristicId: _controlPointCharacteristic,
       deviceId: deviceId,
     );
-    _featureCharacteristicRef = QualifiedCharacteristic(
-      serviceId: _ftmsServiceUuid,
-      characteristicId: _featureCharacteristic,
-      deviceId: deviceId,
-    );
-
     _resolveMetricsCharacteristic(deviceId)
         .then((characteristic) {
           if (characteristic == null) {
             _connectionStateController.add(TreadmillConnectionState.error);
             return;
           }
-          _metricsCharacteristic = characteristic;
           _metricsSubscription?.cancel();
           _metricsSubscription = _ble
               .subscribeToCharacteristic(characteristic)
