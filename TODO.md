@@ -14,12 +14,14 @@
 - **Testing & Mocking**
   - [x] Debug mock treadmill service + workout screen integration
   - [x] Timeline demo program for testing timeline UI
+- **Recent Polish**
+  - [x] Pre-workout goal handling widgets aligned with create program
+  - [x] Shared widget kit for toggles, pickers, and cards
 
 ## MVP (to ship)
 - **App State & Blocs**
   - [ ] Global AppBloc / ConnectionCubit enhancements
   - [ ] ProgramsBloc for CRUD (beyond create)
-  - [ ] PreWorkoutBloc goal handling improvements
   - [ ] WorkoutBloc step progression, repeat blocks, treadmill commands (partially done)
   - [ ] WorkoutSummaryCubit history integrations (future features)
 - **Permissions Flow**
@@ -39,8 +41,6 @@
   - [ ] Permissions cues, sync badge reintroduction
   - [ ] Workout Summary chart & table styling tweaks
   - [ ] History list display program names/colors/icons
-- **Widget/Code Quality**
-  - [ ] Refactor widgets for improved usability and reuse
 - **Packages & Tooling**
   - [x] Update all packages (Flutter/Dart dependencies)
 
