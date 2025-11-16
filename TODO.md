@@ -30,8 +30,8 @@
   - [x] Show fallbacks when denied
 - **Testing / QA**
   - [x] Add unit tests for workout step progression
-  - [ ] Add unit tests for repeat blocks
-  - [ ] Add unit tests for timeline rendering model
+  - [x] Add unit tests for repeat blocks
+  - [x] Add unit tests for timeline rendering model
 
 ## Improvements
 - **UI / UX Polish**

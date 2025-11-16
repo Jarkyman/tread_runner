@@ -13,6 +13,7 @@ import '../../../domain/models/workout_metric_sample.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_session.dart';
 import '../../../domain/models/workout_step.dart';
+import '../models/workout_timeline.dart';
 part 'workout_event.dart';
 part 'workout_state.dart';
 
@@ -291,7 +292,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     for (final step in plan.steps) {
       final repeats = max(1, step.repeatCount ?? 1);
       for (var i = 0; i < repeats; i++) {
-        final duration = _estimateStepDuration(step);
+        final duration = estimateWorkoutStepDuration(step);
         segments.add(
           _CalculatedSegment(start: cursor, end: cursor + duration, step: step),
         );
@@ -299,20 +300,6 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
       }
     }
     return segments;
-  }
-
-  Duration _estimateStepDuration(WorkoutStep step) {
-    if (step.durationSeconds != null && step.durationSeconds! > 0) {
-      return Duration(seconds: step.durationSeconds!);
-    }
-    if (step.distanceMeters != null && step.targetSpeedKmh != null) {
-      final metersPerSecond = (step.targetSpeedKmh! * 1000) / 3600;
-      if (metersPerSecond > 0) {
-        final seconds = (step.distanceMeters! / metersPerSecond).round();
-        return Duration(seconds: max(1, seconds));
-      }
-    }
-    return const Duration(minutes: 1);
   }
 
   Future<void> _applyStepTargets(int stepIndex) async {

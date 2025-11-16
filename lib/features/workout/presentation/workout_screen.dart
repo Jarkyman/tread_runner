@@ -12,10 +12,12 @@ import '../../../core/preferences/user_preferences_repository.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/models/workout_plan.dart';
 import '../../../domain/models/workout_step.dart';
+import '../models/workout_timeline.dart';
 import '../../shared/widgets/connection_status_badge.dart';
 import '../../workout_summary/cubit/workout_summary_cubit.dart';
 import '../../workout_summary/presentation/workout_summary_screen.dart';
 import '../bloc/workout_bloc.dart';
+import '../models/workout_timeline.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -90,7 +92,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
               );
             }
 
-            final timeline = _WorkoutTimeline.fromPlan(state.plan!);
+            final timeline = WorkoutTimeline.fromPlan(state.plan!);
             final treadmillService = context.read<TreadmillService>();
 
             return Column(
@@ -568,7 +570,7 @@ class _WorkoutTimelineView extends StatelessWidget {
   });
 
   final WorkoutPlan plan;
-  final _WorkoutTimeline timeline;
+  final WorkoutTimeline timeline;
   final Duration elapsed;
   final TreadmillMetrics metrics;
   final Duration? goalDuration;
@@ -697,7 +699,7 @@ class _CurrentSegmentCard extends StatelessWidget {
   });
 
   final WorkoutPlan plan;
-  final _WorkoutTimeline timeline;
+  final WorkoutTimeline timeline;
   final Duration elapsed;
   final TreadmillMetrics metrics;
   final UnitsPreference unitsPreference;
@@ -1070,71 +1072,6 @@ class _PauseResumeButtonState extends State<_PauseResumeButton>
   }
 }
 
-class _WorkoutTimeline {
-  _WorkoutTimeline(this.segments);
-
-  factory _WorkoutTimeline.fromPlan(WorkoutPlan plan) {
-    final segments = <_TimelineSegment>[];
-    var cursor = Duration.zero;
-    for (final step in plan.steps) {
-      final repeats = max(1, step.repeatCount ?? 1);
-      for (var i = 0; i < repeats; i++) {
-        final duration = _estimateStepDuration(step);
-        final segment = _TimelineSegment(
-          step: step,
-          start: cursor,
-          end: cursor + duration,
-          repeatIndex: i + 1,
-          repeatTotal: repeats,
-        );
-        segments.add(segment);
-        cursor += duration;
-      }
-    }
-    return _WorkoutTimeline(segments);
-  }
-
-  final List<_TimelineSegment> segments;
-
-  _TimelineSegment? currentSegment(Duration elapsed) {
-    for (final segment in segments) {
-      if (elapsed < segment.end) {
-        return segment;
-      }
-    }
-    return segments.isEmpty ? null : segments.last;
-  }
-
-  double segmentProgress(int index, Duration elapsed) {
-    if (index >= segments.length) return 0;
-    final segment = segments[index];
-    if (elapsed >= segment.end) return 1;
-    if (elapsed <= segment.start) return 0;
-    final total = segment.duration.inMilliseconds;
-    if (total == 0) return 0;
-    final elapsedMs = elapsed.inMilliseconds - segment.start.inMilliseconds;
-    return (elapsedMs / total).clamp(0, 1);
-  }
-}
-
-class _TimelineSegment {
-  _TimelineSegment({
-    required this.step,
-    required this.start,
-    required this.end,
-    required this.repeatIndex,
-    required this.repeatTotal,
-  });
-
-  final WorkoutStep step;
-  final Duration start;
-  final Duration end;
-  final int repeatIndex;
-  final int repeatTotal;
-
-  Duration get duration => end - start;
-}
-
 class _WorkoutEmptyState extends StatelessWidget {
   const _WorkoutEmptyState({required this.onClose});
 
@@ -1163,21 +1100,6 @@ class _WorkoutEmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-Duration _estimateStepDuration(WorkoutStep step) {
-  if (step.durationSeconds != null && step.durationSeconds! > 0) {
-    return Duration(seconds: step.durationSeconds!);
-  }
-  if (step.distanceMeters != null && step.targetSpeedKmh != null) {
-    final metersPerSecond = (step.targetSpeedKmh! * 1000) / 3600;
-    if (metersPerSecond > 0) {
-      return Duration(
-        seconds: max(1, (step.distanceMeters! / metersPerSecond).round()),
-      );
-    }
-  }
-  return const Duration(minutes: 1);
 }
 
 String _formatElapsed(Duration value) {
@@ -1216,7 +1138,7 @@ String _speedUnit(UnitsPreference preference) {
   return preference == UnitsPreference.metric ? 'KM/H' : 'MPH';
 }
 
-String _segmentTitle(_TimelineSegment segment) {
+String _segmentTitle(WorkoutTimelineSegment segment) {
   final base = _segmentLabel(segment.step.type);
   if (segment.repeatTotal > 1) {
     return '$base ${segment.repeatIndex}/${segment.repeatTotal}';
