@@ -19,10 +19,10 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     required WorkoutHistoryRepository workoutHistoryRepository,
     required TreadmillService treadmillService,
     Ticker ticker = const Ticker(),
-  })  : _historyRepository = workoutHistoryRepository,
-        _treadmillService = treadmillService,
-        _ticker = ticker,
-        super(const WorkoutState()) {
+  }) : _historyRepository = workoutHistoryRepository,
+       _treadmillService = treadmillService,
+       _ticker = ticker,
+       super(const WorkoutState()) {
     on<WorkoutStarted>(_onStarted);
     on<WorkoutPaused>(_onPaused);
     on<WorkoutResumed>(_onResumed);
@@ -34,6 +34,8 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
   final WorkoutHistoryRepository _historyRepository;
   final TreadmillService _treadmillService;
   final Ticker _ticker;
+  List<_CalculatedSegment> _segments = const [];
+  bool _autoStopRequested = false;
 
   StreamSubscription<int>? _tickerSubscription;
   StreamSubscription<TreadmillMetrics>? _metricsSubscription;
@@ -50,6 +52,8 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     _resumeSpeedKmh = null;
     _resumeInclinePercent = null;
     _metricsBaseline = null;
+    _segments = const [];
+    _autoStopRequested = false;
 
     try {
       await _treadmillService.setSpeed(event.initialSpeedKmh);
@@ -58,12 +62,18 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
       // Non-fatal: controls might be unsupported.
     }
 
-    _tickerSubscription =
-        _ticker.tick().listen((_) => add(const _WorkoutTicked()));
+    _segments = _calculateSegments(event.plan);
+    if (_segments.isNotEmpty) {
+      unawaited(_applyStepTargets(0));
+    }
+
+    _tickerSubscription = _ticker.tick().listen(
+      (_) => add(const _WorkoutTicked()),
+    );
     _metricsSubscription = _treadmillService.listenToMetrics().listen(
-          (metrics) => add(_WorkoutMetricsUpdated(metrics)),
-          onError: (_) => add(const WorkoutStopped()),
-        );
+      (metrics) => add(_WorkoutMetricsUpdated(metrics)),
+      onError: (_) => add(const WorkoutStopped()),
+    );
 
     emit(
       state.copyWith(
@@ -77,6 +87,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
         errorMessage: null,
         goalDuration: event.goalDuration,
         goalDistanceMeters: event.goalDistanceMeters,
+        currentStepIndex: 0,
       ),
     );
   }
@@ -145,18 +156,15 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     );
     _resumeSpeedKmh = null;
     _resumeInclinePercent = null;
+    _segments = const [];
+    _autoStopRequested = false;
   }
 
-  void _onTicked(
-    _WorkoutTicked event,
-    Emitter<WorkoutState> emit,
-  ) {
+  void _onTicked(_WorkoutTicked event, Emitter<WorkoutState> emit) {
     if (state.status != WorkoutStatus.running) return;
-    emit(
-      state.copyWith(
-        elapsed: state.elapsed + const Duration(seconds: 1),
-      ),
-    );
+    final nextElapsed = state.elapsed + const Duration(seconds: 1);
+    emit(state.copyWith(elapsed: nextElapsed));
+    _maybeRequestAutoStop(nextElapsed, state.metrics.distanceMeters);
   }
 
   void _onMetricsUpdated(
@@ -164,32 +172,35 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     Emitter<WorkoutState> emit,
   ) {
     if (state.status != WorkoutStatus.running) return;
+    final relativeElapsed = _relativeElapsed(event.metrics);
+    final relativeDistance = _relativeDistance(event.metrics);
     final sample = WorkoutMetricSample(
-      elapsedSeconds: _relativeElapsed(event.metrics).inSeconds,
+      elapsedSeconds: relativeElapsed.inSeconds,
       speedKmh: event.metrics.speedKmh,
       inclinePercent: event.metrics.inclinePercent,
-      distanceMeters: _relativeDistance(event.metrics),
+      distanceMeters: relativeDistance,
       heartRate: event.metrics.heartRate,
     );
 
     final updatedSamples = List<WorkoutMetricSample>.from(state.samples)
       ..add(sample);
 
-    final updatedStepIndex = _resolveStepIndex(state.plan, state.elapsed);
-    if (updatedStepIndex != state.currentStepIndex && state.plan != null) {
-      unawaited(_applyStepTargets(state.plan!, updatedStepIndex));
+    final updatedStepIndex = _resolveStepIndex(relativeElapsed);
+    if (updatedStepIndex != state.currentStepIndex) {
+      unawaited(_applyStepTargets(updatedStepIndex));
     }
 
     emit(
       state.copyWith(
         metrics: event.metrics.copyWith(
-          elapsed: _relativeElapsed(event.metrics),
-          distanceMeters: _relativeDistance(event.metrics),
+          elapsed: relativeElapsed,
+          distanceMeters: relativeDistance,
         ),
         samples: updatedSamples,
         currentStepIndex: updatedStepIndex,
       ),
     );
+    _maybeRequestAutoStop(relativeElapsed, relativeDistance);
   }
 
   WorkoutSession? _buildSession(WorkoutState state) {
@@ -227,16 +238,37 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     if (diff.isNegative) return 0;
     return diff;
   }
-  int _resolveStepIndex(WorkoutPlan? plan, Duration elapsed) {
-    if (plan == null || plan.steps.isEmpty) return 0;
-    final segments = _calculateSegments(plan);
-    for (var i = 0; i < segments.length; i++) {
-      final segment = segments[i];
+
+  void _maybeRequestAutoStop(Duration elapsed, double distanceMeters) {
+    if (state.status != WorkoutStatus.running) return;
+    if (_autoStopRequested) return;
+    final goalDuration = state.goalDuration;
+    if (goalDuration != null && elapsed >= goalDuration) {
+      _autoStopRequested = true;
+      add(const WorkoutStopped());
+      return;
+    }
+    final goalDistance = state.goalDistanceMeters;
+    if (goalDistance != null && distanceMeters >= goalDistance) {
+      _autoStopRequested = true;
+      add(const WorkoutStopped());
+      return;
+    }
+    if (_segments.isNotEmpty && elapsed >= _segments.last.end) {
+      _autoStopRequested = true;
+      add(const WorkoutStopped());
+    }
+  }
+
+  int _resolveStepIndex(Duration elapsed) {
+    if (_segments.isEmpty) return 0;
+    for (var i = 0; i < _segments.length; i++) {
+      final segment = _segments[i];
       if (elapsed < segment.end) {
         return i;
       }
     }
-    return max(0, segments.length - 1);
+    return max(0, _segments.length - 1);
   }
 
   List<_CalculatedSegment> _calculateSegments(WorkoutPlan plan) {
@@ -247,11 +279,7 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
       for (var i = 0; i < repeats; i++) {
         final duration = _estimateStepDuration(step);
         segments.add(
-          _CalculatedSegment(
-            start: cursor,
-            end: cursor + duration,
-            step: step,
-          ),
+          _CalculatedSegment(start: cursor, end: cursor + duration, step: step),
         );
         cursor += duration;
       }
@@ -273,13 +301,9 @@ class WorkoutBloc extends Bloc<WorkoutEvent, WorkoutState> {
     return const Duration(minutes: 1);
   }
 
-  Future<void> _applyStepTargets(
-    WorkoutPlan plan,
-    int stepIndex,
-  ) async {
-    final segments = _calculateSegments(plan);
-    if (stepIndex < 0 || stepIndex >= segments.length) return;
-    final step = segments[stepIndex].step;
+  Future<void> _applyStepTargets(int stepIndex) async {
+    if (stepIndex < 0 || stepIndex >= _segments.length) return;
+    final step = _segments[stepIndex].step;
     final futures = <Future<void>>[];
     if (step.targetSpeedKmh != null) {
       futures.add(_treadmillService.setSpeed(step.targetSpeedKmh!));

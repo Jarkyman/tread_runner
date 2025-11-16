@@ -50,14 +50,14 @@ class ProgramSection extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        speedKmh,
-        inclinePercent,
-        goalType,
-        durationMinutes,
-        distanceMeters,
-        repeatCount,
-      ];
+    id,
+    speedKmh,
+    inclinePercent,
+    goalType,
+    durationMinutes,
+    distanceMeters,
+    repeatCount,
+  ];
 }
 
 class CreateProgramState extends Equatable {
@@ -102,18 +102,16 @@ class CreateProgramState extends Equatable {
 
   @override
   List<Object?> get props => [
-        sections,
-        colorValue,
-        iconCodePoint,
-        planId,
-        name,
-        isSaving,
-        errorMessage,
-      ];
+    sections,
+    colorValue,
+    iconCodePoint,
+    planId,
+    name,
+    isSaving,
+    errorMessage,
+  ];
 
-  factory CreateProgramState.initial(
-    WorkoutPlan? initialPlan,
-  ) {
+  factory CreateProgramState.initial(WorkoutPlan? initialPlan) {
     if (initialPlan == null) {
       return CreateProgramState(
         sections: const [ProgramSection(id: 0)],
@@ -156,8 +154,8 @@ class CreateProgramState extends Equatable {
 
 class CreateProgramCubit extends Cubit<CreateProgramState> {
   CreateProgramCubit({WorkoutPlan? initialPlan})
-      : _nextId = _initialNextId(initialPlan),
-        super(CreateProgramState.initial(initialPlan));
+    : _nextId = _initialNextId(initialPlan),
+      super(CreateProgramState.initial(initialPlan));
 
   int _nextId;
 
@@ -188,7 +186,9 @@ class CreateProgramCubit extends Cubit<CreateProgramState> {
     if (state.sections.length <= 1) {
       return;
     }
-    final sections = state.sections.where((section) => section.id != id).toList();
+    final sections = state.sections
+        .where((section) => section.id != id)
+        .toList();
     emit(state.copyWith(sections: sections));
   }
 
@@ -196,7 +196,9 @@ class CreateProgramCubit extends Cubit<CreateProgramState> {
     final sections = state.sections.map((section) {
       if (section.id != id) return section;
       final newSpeed = (section.speedKmh + delta).clamp(1, 20);
-      return section.copyWith(speedKmh: double.parse(newSpeed.toStringAsFixed(1)));
+      return section.copyWith(
+        speedKmh: double.parse(newSpeed.toStringAsFixed(1)),
+      );
     }).toList();
     emit(state.copyWith(sections: sections));
   }

@@ -22,7 +22,7 @@
 
 ## MVP (to ship)
 - **App State & Blocs**
-  - [ ] WorkoutBloc step progression, repeat blocks, treadmill commands (partially done)
+  - [x] WorkoutBloc step progression, repeat blocks, treadmill commands
   - [ ] WorkoutSummaryCubit history integrations (future features)
 - **Permissions Flow**
   - [ ] Request health permissions on first sync

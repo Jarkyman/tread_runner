@@ -39,9 +39,9 @@ class _CreateProgramView extends StatelessWidget {
       listener: (context, state) {
         final error = state.errorMessage;
         if (error != null && error.isNotEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(error)));
         }
       },
       builder: (context, state) {
@@ -67,8 +67,10 @@ class _CreateProgramView extends StatelessWidget {
                     ? null
                     : () {
                         final cubit = context.read<CreateProgramCubit>();
-                        final programs =
-                            context.read<ProgramsBloc>().state.programs;
+                        final programs = context
+                            .read<ProgramsBloc>()
+                            .state
+                            .programs;
                         final plan = cubit.buildPlan(programs);
                         if (plan == null) return;
                         context.read<ProgramsBloc>().add(ProgramSaved(plan));
@@ -105,8 +107,9 @@ class _CreateProgramView extends StatelessWidget {
                     Expanded(
                       child: TextFormField(
                         initialValue: state.name,
-                        onChanged:
-                            context.read<CreateProgramCubit>().updateName,
+                        onChanged: context
+                            .read<CreateProgramCubit>()
+                            .updateName,
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Custom Program',
@@ -124,10 +127,12 @@ class _CreateProgramView extends StatelessWidget {
                     _ColorPicker(
                       selectedColor: state.colorValue,
                       selectedIconCodePoint: state.iconCodePoint,
-                      onColorSelected:
-                          context.read<CreateProgramCubit>().updateColor,
-                      onIconSelected:
-                          context.read<CreateProgramCubit>().updateIcon,
+                      onColorSelected: context
+                          .read<CreateProgramCubit>()
+                          .updateColor,
+                      onIconSelected: context
+                          .read<CreateProgramCubit>()
+                          .updateIcon,
                     ),
                   ],
                 ),
@@ -320,8 +325,7 @@ class _SectionCard extends StatelessWidget {
             max: 20,
             step: 0.1,
             style: MetricAdjusterStyle.inline,
-            onChanged: (value) =>
-                cubit.setSpeedValue(section.id, value),
+            onChanged: (value) => cubit.setSpeedValue(section.id, value),
           ),
           const SizedBox(height: 12),
           MetricAdjuster(
@@ -333,8 +337,7 @@ class _SectionCard extends StatelessWidget {
             step: 1,
             decimals: 0,
             style: MetricAdjusterStyle.inline,
-            onChanged: (value) =>
-                cubit.setInclineValue(section.id, value),
+            onChanged: (value) => cubit.setInclineValue(section.id, value),
           ),
           const SizedBox(height: 16),
           DurationDistanceToggle<ProgramSectionGoalType>(
@@ -365,7 +368,8 @@ class _SectionCard extends StatelessWidget {
   ) async {
     final cubit = context.read<CreateProgramCubit>();
     int temp = section.repeatCount;
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (dialogCtx) {
             return StatefulBuilder(
@@ -382,9 +386,7 @@ class _SectionCard extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.remove, color: Colors.white),
                         onPressed: () {
-                          setStateDialog(
-                            () => temp = max(1, temp - 1),
-                          );
+                          setStateDialog(() => temp = max(1, temp - 1));
                         },
                       ),
                       Text(
@@ -398,9 +400,7 @@ class _SectionCard extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.add, color: Colors.white),
                         onPressed: () {
-                          setStateDialog(
-                            () => temp = min(99, temp + 1),
-                          );
+                          setStateDialog(() => temp = min(99, temp + 1));
                         },
                       ),
                     ],
@@ -483,8 +483,9 @@ class _DistancePicker extends StatelessWidget {
           max: 50,
           step: 0.1,
           value: double.parse(kilometers.toStringAsFixed(1)),
-          labelBuilder: (value) =>
-              value >= 1 ? '${value.toStringAsFixed(1)} km' : '${(value * 1000).round()} m',
+          labelBuilder: (value) => value >= 1
+              ? '${value.toStringAsFixed(1)} km'
+              : '${(value * 1000).round()} m',
           onChanged: (km) => onChanged((km * 1000).round()),
         ),
       ],

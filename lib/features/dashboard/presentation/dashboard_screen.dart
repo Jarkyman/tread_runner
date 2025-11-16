@@ -168,8 +168,9 @@ class _ProgramCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = Color(plan.colorValue);
-    final iconCode =
-        plan.iconCodePoint == 0 ? Icons.directions_run.codePoint : plan.iconCodePoint;
+    final iconCode = plan.iconCodePoint == 0
+        ? Icons.directions_run.codePoint
+        : plan.iconCodePoint;
     final iconData = IconData(iconCode, fontFamily: 'MaterialIcons');
     return Container(
       decoration: BoxDecoration(
@@ -212,16 +213,16 @@ class _ProgramCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             plan.name,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.white),
           ),
           const Spacer(),
           Text(
             '${plan.steps.length} steps',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
           ),
         ],
       ),
@@ -244,14 +245,13 @@ class _ProgramCard extends StatelessWidget {
         _duplicatePlan(context);
         break;
       case _ProgramMenuAction.delete:
-        final confirmed = await showDialog<bool>(
+        final confirmed =
+            await showDialog<bool>(
               context: context,
               builder: (dialogContext) {
                 return AlertDialog(
                   title: const Text('Delete program?'),
-                  content: Text(
-                    'This will remove ${plan.name} and its steps.',
-                  ),
+                  content: Text('This will remove ${plan.name} and its steps.'),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -287,9 +287,9 @@ class _ProgramCard extends StatelessWidget {
       initialSteps: _cloneSteps(plan.steps),
     );
     bloc.add(ProgramSaved(clone));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Duplicated "${plan.name}"')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Duplicated "${plan.name}"')));
   }
 
   List<WorkoutStep> _cloneSteps(List<WorkoutStep> steps) {
