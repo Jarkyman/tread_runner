@@ -29,7 +29,7 @@
   - [x] Request health permissions on first sync
   - [x] Show fallbacks when denied
 - **Testing / QA**
-  - [ ] Add unit tests for workout step progression
+  - [x] Add unit tests for workout step progression
   - [ ] Add unit tests for repeat blocks
   - [ ] Add unit tests for timeline rendering model
 

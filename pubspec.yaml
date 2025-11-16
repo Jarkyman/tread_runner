@@ -31,6 +31,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   isar_generator: ^3.1.0+1
+  mocktail: ^1.0.3
 
 flutter_launcher_icons:
   android: launcher_icon
