@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -181,7 +182,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     double delta,
   ) {
     final double newSpeed = (currentSpeed + delta).clamp(0.0, 25.0);
-    unawaited(service.setSpeed(newSpeed));
+    unawaited(
+      service.setSpeed(newSpeed).catchError(
+        (error, stackTrace) => debugPrint('Failed to set speed: $error'),
+      ),
+    );
   }
 
   void _changeIncline(
@@ -191,7 +196,11 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
     double delta,
   ) {
     final double newIncline = (currentIncline + delta).clamp(0.0, 15.0);
-    unawaited(service.setIncline(newIncline));
+    unawaited(
+      service.setIncline(newIncline).catchError(
+        (error, stackTrace) => debugPrint('Failed to set incline: $error'),
+      ),
+    );
   }
 }
 
